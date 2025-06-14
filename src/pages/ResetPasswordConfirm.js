@@ -1,7 +1,8 @@
 // ResetPasswordConfirm.js
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useLocation, Link } from 'react-router-dom';
+import axiosInstance from '../axiosConfig';
+
 
 const ResetPasswordConfirm = () => {
     const [password, setPassword] = useState('');
@@ -26,7 +27,7 @@ const ResetPasswordConfirm = () => {
         }
 
         try {
-            const response = await axios.post('http://localhost:8000/accounts/auth/password-reset-confirm/', {
+            const response = await axiosInstance.post('/accounts/auth/password-reset-confirm/', {
                 token,
                 user_id: userId,
                 new_password: password,

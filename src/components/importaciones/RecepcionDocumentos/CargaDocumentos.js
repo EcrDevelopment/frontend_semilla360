@@ -42,11 +42,15 @@ const RecepcionDocumentos = () => {
           title: "Carga completada con advertencias",
           content: (
             <div>
-              <p>Los siguientes archivos ya están registrados en otras declaraciones:</p>
+              <p>
+                Los siguientes archivos ya están registrados en otras
+                declaraciones:
+              </p>
               <ul>
                 {res.data.archivos_omitidos.map((item, index) => (
                   <li key={index}>
-                    <strong>{item.archivo}</strong> ya está en la DUA <strong>{item.registrado_en}</strong>
+                    <strong>{item.archivo}</strong> ya está en la DUA{" "}
+                    <strong>{item.registrado_en}</strong>
                   </li>
                 ))}
               </ul>
@@ -121,11 +125,15 @@ const RecepcionDocumentos = () => {
           title: "Carga completada con advertencias",
           content: (
             <div>
-              <p>Algunos archivos ya están registrados en las siguientes declaraciones:</p>
+              <p>
+                Algunos archivos ya están registrados en las siguientes
+                declaraciones:
+              </p>
               <ul>
                 {res.data.archivos_omitidos.map((item, index) => (
                   <li key={index}>
-                    <strong>{item.archivo}</strong> ya está en la DUA <strong>{item.registrado_en}</strong>
+                    <strong>{item.archivo}</strong> ya está en la DUA{" "}
+                    <strong>{item.registrado_en}</strong>
                   </li>
                 ))}
               </ul>
@@ -155,7 +163,9 @@ const RecepcionDocumentos = () => {
 
   return (
     <div className="w-full md:w-2/3 mx-auto mt-10 p-6 bg-white shadow rounded-lg">
-      <h2 className="text-2xl font-bold mb-4 text-center">Carga de Documentos DUA</h2>
+      <h2 className="text-2xl font-bold mb-4 text-center">
+        Carga de Documentos DUA
+      </h2>
       <Tabs defaultActiveKey="directa">
         <TabPane tab="Carga directa" key="directa">
           <Form
@@ -184,8 +194,12 @@ const RecepcionDocumentos = () => {
               label="Archivos"
               name="archivos"
               valuePropName="fileList"
-              getValueFromEvent={(e) => (Array.isArray(e) ? e : e && e.fileList)}
-              rules={[{ required: true, message: "Seleccione al menos un archivo" }]}
+              getValueFromEvent={(e) =>
+                Array.isArray(e) ? e : e && e.fileList
+              }
+              rules={[
+                { required: true, message: "Seleccione al menos un archivo" },
+              ]}
             >
               <Upload.Dragger
                 multiple
@@ -193,8 +207,12 @@ const RecepcionDocumentos = () => {
                 onChange={handleFileChange}
                 fileList={fileList}
               >
-                <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-                <p className="ant-upload-text">Haz clic o arrastra los archivos aquí</p>
+                <p className="ant-upload-drag-icon">
+                  <InboxOutlined />
+                </p>
+                <p className="ant-upload-text">
+                  Haz clic o arrastra los archivos aquí
+                </p>
               </Upload.Dragger>
             </Form.Item>
 
@@ -209,9 +227,10 @@ const RecepcionDocumentos = () => {
             <Form.Item label="Archivo ZIP o RAR">
               <Dragger
                 accept=".zip,.rar"
+                multiple={false} // ← Esto es clave
                 beforeUpload={(file) => {
                   setArchivoZip(file);
-                  return false;
+                  return false; // Evita el upload automático
                 }}
                 onRemove={() => {
                   setArchivoZip(null);
@@ -219,18 +238,29 @@ const RecepcionDocumentos = () => {
                 }}
                 showUploadList={{ showRemoveIcon: true }}
               >
-                <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-                <p className="ant-upload-text">Arrastra o selecciona un archivo comprimido</p>
+                <p className="ant-upload-drag-icon">
+                  <InboxOutlined />
+                </p>
+                <p className="ant-upload-text">
+                  Arrastra o selecciona un archivo comprimido
+                </p>
               </Dragger>
             </Form.Item>
 
-            <Button onClick={handleZipProcesar} disabled={!archivoZip || loading} block className="mb-4">
+            <Button
+              onClick={handleZipProcesar}
+              disabled={!archivoZip || loading}
+              block
+              className="mb-4"
+            >
               {loading ? <Spin size="small" /> : "Procesar Archivo"}
             </Button>
 
             {carpetas.length > 0 && (
               <>
-                <h3 className="text-lg font-semibold mt-4">Asignar número de DUA y año por carpeta:</h3>
+                <h3 className="text-lg font-semibold mt-4">
+                  Asignar número de DUA y año por carpeta:
+                </h3>
                 {carpetas.map((carpeta, index) => (
                   <div key={index} className="flex gap-2 items-center mb-2">
                     <span className="w-1/3">{carpeta}</span>

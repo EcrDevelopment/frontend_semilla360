@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, Layout, Avatar } from "antd";
 import { HomeOutlined } from "@ant-design/icons";
+import { MdLock,MdOutlineTableView } from "react-icons/md";
+import { AiOutlineTruck } from "react-icons/ai";
 import { GoContainer } from "react-icons/go";
 import { useAuth } from '../context/AuthContext';
 
@@ -25,28 +27,40 @@ const menuConfig = [
       { key: '3', label: 'Listado Fletes', to: '/importaciones/ver_fletes_internacionales', permission: 'importaciones.ver_fletes_internacionales' },
       { key: '4', label: 'Fletes Extranjeros', to: '/importaciones/registrar_flete_internacional', permission:'importaciones.registrar_flete_internacional' },
       { key: '5', label: 'Reporte Estiba', to: '/importaciones/reporte-estiba', permission: 'importaciones.ver_reporte_estibas' },
-      //{ key: '6', label: 'Recepción Docs.', to: '/importaciones/carga_docs_dua', permission: 'importaciones.carga_docs_dua' },
+      { key: '6', label: 'Documentos DUA', to: '/importaciones/gestion_documentos', permission: 'importaciones.administrar_documentos_dua' }, 
+      { key: '7', label: 'Archivos DUA', to: '/importaciones/listado-archivos-dua', permission: 'importaciones.administrar_expedientes_dua' }, 
     ],
   },
   {
     key: 'sub2',
-    icon: <GoContainer />,
-    label: 'Usuarios',
-    permission: null,
-    children: [
-      { key: '6', label: 'Usuarios', to: '/usuarios', permission: 'user.listar_usuarios' },   
-      { key: '7', label: 'Roles', to: '/roles', permission: 'user.listar_usuarios' },
-      { key: '8', label: 'Permisos', to: '/permisos', permission: 'user.listar_usuarios' },   
-    ],
-  },
-  {
-    key: 'sub3',
-    icon: <GoContainer />,
+    icon: <AiOutlineTruck />,
     label: 'Proveedores',
     permission: null,
     children: [
-      { key: '9', label: 'Cargar Documentos', to: '/importaciones/carga_docs_dua', permission: 'proveedor.cargar_documentos' },   
-      { key: '10', label: 'admin Docs', to: '/importaciones/gestion_documentos', permission: null }, 
+      { key: '8', label: 'Cargar Documentos DUA', to: '/proveedores/carga_docs_dua', permission: 'proveedor.cargar_documentos' },
+      { key: '9', label: 'Gestión de docs.', to: '/proveedores/gestion_de_documentos', permission: 'proveedor.administrar_documentos' },  
+    ],
+  },
+  
+  {
+    key: 'sub3',
+    icon: <MdOutlineTableView />,
+    label: 'Tablas',
+    permission: 'mantenimiento.tabla_tipo_documentos',
+    children: [
+      { key: '10', label: 'Tabla Tipo Doc.', to: '/tipos_documentos', permission: 'mantenimiento.tabla_tipo_documentos'},  
+    ],
+  },
+  
+  {
+    key: 'sub4',
+    icon: <MdLock />,
+    label: 'Usuarios',
+    permission: null,
+    children: [
+      { key: '11', label: 'Usuarios', to: '/usuarios', permission: 'user.listar_usuarios' },   
+      { key: '12', label: 'Roles', to: '/roles', permission: 'user.listar_usuarios' },
+      { key: '13', label: 'Permisos', to: '/permisos', permission: 'user.listar_usuarios' },   
     ],
   },
 ];

@@ -20,3 +20,22 @@ export const createPermission = (data) => axiosInstance.post('/accounts/permisos
 export const updatePermission = (id, data) => axiosInstance.put(`/accounts/permisos/${id}/`, data);
 export const deletePermission = (id) => axiosInstance.delete(`/accounts/permisos/${id}/`);
 export const fetchContentTypes = () => axiosInstance.get('/accounts/content_types/');
+
+
+// Empresas
+export const fetchEmpresas = () => axiosInstance.get('/accounts/empresas/');
+export const fetchEmpresa = (id) => axiosInstance.get(`/accounts/empresas/${id}/`);
+export const createEmpresa = (data) => axiosInstance.post('/accounts/empresas/', data);
+
+// Direcciones
+export const fetchDirecciones = () => axiosInstance.get('/accounts/direcciones/');
+export const fetchDireccion = (id) => axiosInstance.get(`/accounts/direcciones/${id}/`);
+export const createDireccion = (data) => axiosInstance.post('/accounts/direcciones/', data);
+export const updateDireccion = (id, data) => axiosInstance.put(`/accounts/direcciones/${id}/`, data);
+export const deleteDireccion = (id) => axiosInstance.delete(`/accounts/direcciones/${id}/`);
+export const fetchDireccionesByEmpresa = (empresaId) => axiosInstance.get(`/accounts/empresas/${empresaId}/direcciones/`);
+
+// Ubigeo (departamento, provincia, distrito)
+export const fetchDepartamentos = () => axiosInstance.get('/accounts/departamentos/');
+export const fetchProvincias = () => axiosInstance.get('/accounts/provincias/');
+export const fetchDistritos = () => axiosInstance.get('/accounts/distritos/');
