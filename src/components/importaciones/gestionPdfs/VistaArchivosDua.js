@@ -4,20 +4,38 @@ import {
     obtenerDocumentosExpedienteAgrupadosPorTipo,
     getDocumento,
     eliminarDocumentoExpediente,
-    ActualizarFolioDocumentoExpediente
-} from "../../../api/Documentos";
+    ActualizarFolioDocumentoExpediente,
+} from '../../../api/Documentos';
 import {
-    Card, Typography, Spin, message, Collapse, Empty, Button, Popconfirm,Modal
+    Layout,
+    Typography,
+    Spin,
+    message,
+    Collapse,
+    Empty,
+    Button,
+    Popconfirm,
+    Modal,
+    Card,
+    Tooltip
 } from 'antd';
 import {
-    FilePdfOutlined, ZoomInOutlined, ZoomOutOutlined, LoadingOutlined
+    FilePdfOutlined,
+    ZoomInOutlined,
+    ZoomOutOutlined,
+    LoadingOutlined,
+    MenuUnfoldOutlined,
+    MenuFoldOutlined,
+    DeleteOutlined,
+    SaveOutlined,
 } from '@ant-design/icons';
 import { Document, Page, pdfjs } from 'react-pdf';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
+const { Sider, Content } = Layout;
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const VistaArchivoDua = () => {
     const { id, numero, anio } = useParams();
@@ -28,12 +46,14 @@ const VistaArchivoDua = () => {
     const [zoomLevel, setZoomLevel] = useState(1.0);
     const [folio, setFolio] = useState('');
     const [folioGuardado, setFolioGuardado] = useState('');
-    const inputRef = useRef(null);
-    const visorRef = useRef(null);
     const [documentoActualId, setDocumentoActualId] = useState(null);
     const [expedienteActualId, setExpedienteActualId] = useState(null);
     const [savingFolio, setSavingFolio] = useState(false);
-    const [activeCollapseKey, setActiveCollapseKey] = useState(null); // 👈 NUEVO
+    const [activeCollapseKey, setActiveCollapseKey] = useState(null);
+    const [siderCollapsed, setSiderCollapsed] = useState(false);
+
+    const inputRef = useRef(null);
+    const visorRef = useRef(null);
 
     useEffect(() => {
         const fetchDocumentos = async () => {
@@ -41,34 +61,26 @@ const VistaArchivoDua = () => {
                 const data = await obtenerDocumentosExpedienteAgrupadosPorTipo(id);
                 setDocumentosAgrupados(data || {});
             } catch (error) {
-                console.error("Error al obtener documentos:", error);
-                message.error("Error al obtener documentos agrupados");
+                message.error('Error al obtener documentos agrupados');
             }
         };
         fetchDocumentos();
     }, [id]);
 
     const handleSeleccionarDocumento = async (documento_id, expediente_id) => {
-        // Si hay cambios no guardados en el folio
         if (folio && folio !== folioGuardado) {
             Modal.confirm({
-                title: "Cambios no guardados",
-                content: "Tienes cambios no guardados en el folio. ¿Seguro que deseas cambiar de documento?",
-                okText: "Sí, cambiar",
-                cancelText: "Cancelar",
-                onOk: () => {
-                    // Ejecutar la carga del documento si el usuario confirma
-                    cargarDocumento(documento_id, expediente_id);
-                },
+                title: 'Cambios no guardados',
+                content: '¿Seguro que deseas cambiar de documento?',
+                okText: 'Sí',
+                cancelText: 'Cancelar',
+                onOk: () => cargarDocumento(documento_id, expediente_id),
             });
             return;
         }
-
-        // Si no hay cambios o no hay folio, se ejecuta directamente
         cargarDocumento(documento_id, expediente_id);
     };
 
-    // Extraemos la lógica principal aquí
     const cargarDocumento = async (documento_id, expediente_id) => {
         setLoading(true);
         try {
@@ -83,9 +95,7 @@ const VistaArchivoDua = () => {
             const tipoEncontrado = Object.entries(documentosAgrupados).find(([tipo, docs]) =>
                 docs.some(doc => doc.documento_id === documento_id)
             );
-            if (tipoEncontrado) {
-                setActiveCollapseKey(tipoEncontrado[0]);
-            }
+            if (tipoEncontrado) setActiveCollapseKey(tipoEncontrado[0]);
 
             let folioEncontrado = '';
             Object.values(documentosAgrupados).forEach(group => {
@@ -97,47 +107,46 @@ const VistaArchivoDua = () => {
             });
             setFolio(folioEncontrado);
             setFolioGuardado(folioEncontrado);
-        } catch (error) {
-            message.error("Error al cargar el documento");
+        } catch {
+            message.error('Error al cargar el documento');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleEliminarDocumento = async (expedienteId) => {
+    const handleEliminarDocumento = async expedienteId => {
         try {
             await eliminarDocumentoExpediente(expedienteId);
-            message.success("Documento eliminado correctamente");
+            message.success('Documento eliminado correctamente');
             const data = await obtenerDocumentosExpedienteAgrupadosPorTipo(id);
             setDocumentosAgrupados(data || {});
             setSelectedDocBlobUrl(null);
-        } catch (error) {
-            console.error("Error al eliminar documento:", error);
-            message.error("Error al eliminar el documento");
+        } catch {
+            message.error('Error al eliminar el documento');
         }
     };
 
-    const handleWheelZoom = (e) => {
+    const handleWheelZoom = e => {
         if (e.ctrlKey) {
             e.preventDefault();
-            setZoomLevel((z) => e.deltaY < 0 ? Math.min(z + 0.1, 3) : Math.max(z - 0.1, 0.5));
+            setZoomLevel(z => (e.deltaY < 0 ? Math.min(z + 0.1, 3) : Math.max(z - 0.1, 0.5)));
         }
     };
 
     useEffect(() => {
         const ref = visorRef.current;
         if (ref) {
-            ref.addEventListener("wheel", handleWheelZoom, { passive: false });
+            ref.addEventListener('wheel', handleWheelZoom, { passive: false });
         }
         return () => {
             if (ref) {
-                ref.removeEventListener("wheel", handleWheelZoom);
+                ref.removeEventListener('wheel', handleWheelZoom);
             }
         };
     }, []);
 
     useEffect(() => {
-        const handleKeyDown = (e) => {
+        const handleKeyDown = e => {
             if (e.key === 'Tab') {
                 e.preventDefault();
                 const grupos = Object.entries(documentosAgrupados);
@@ -155,7 +164,6 @@ const VistaArchivoDua = () => {
                 if (actualGrupoIndex === -1) return;
 
                 const grupoActual = grupos[actualGrupoIndex][1];
-
                 if (actualDocIndex + 1 < grupoActual.length) {
                     const siguienteDoc = grupoActual[actualDocIndex + 1];
                     handleSeleccionarDocumento(siguienteDoc.documento_id, siguienteDoc.id);
@@ -168,8 +176,8 @@ const VistaArchivoDua = () => {
             }
         };
 
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
     }, [documentosAgrupados, documentoActualId, folio, folioGuardado]);
 
     const guardarFolio = async () => {
@@ -178,77 +186,132 @@ const VistaArchivoDua = () => {
         try {
             await ActualizarFolioDocumentoExpediente(expedienteActualId, folio.trim());
             setFolioGuardado(folio.trim());
-            message.success("Folio actualizado correctamente");
-        } catch (error) {
-            message.error("Error al actualizar folio");
+            message.success('Folio actualizado correctamente');
+        } catch {
+            message.error('Error al actualizar folio');
         } finally {
             setSavingFolio(false);
         }
     };
 
     return (
-        <div className="p-4">
-            <Title level={3}>Archivo de DUA: {numero}-{anio}</Title>
-            <div className="flex gap-4">
-                <div className="w-1/3 overflow-y-auto h-[80vh] border-r pr-2">
-                    <Collapse
-                        accordion
-                        activeKey={activeCollapseKey}
-                        onChange={(key) => setActiveCollapseKey(key)}
-                    >
-                        {Object.entries(documentosAgrupados).map(([tipo, documentos]) => (
-                            <Panel header={`${tipo} (${documentos.length})`} key={tipo}>
-                                {documentos.map((doc) => {
-                                    const isSelected = doc.documento_id === documentoActualId;
-                                    return (
-                                        <Card
-                                            key={doc.id}
-                                            className={`mb-2 transition-shadow cursor-pointer ${isSelected ? 'shadow-md border border-blue-500' : 'hover:shadow'
-                                                }`}
-                                            bodyStyle={{ padding: "12px" }}
-                                            onClick={() => handleSeleccionarDocumento(doc.documento_id, doc.id)}
-                                        >
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <FilePdfOutlined className="mr-2 text-red-500" />
-                                                    <Text>{doc.nombre_original}</Text><br />
-                                                    <Text type="secondary" className="text-xs">{doc.usuario}</Text>
-                                                </div>
-                                                <Popconfirm
-                                                    title="¿Estás seguro de eliminar este documento?"
-                                                    onConfirm={(e) => {
-                                                        e.stopPropagation();
-                                                        handleEliminarDocumento(doc.id);
-                                                    }}
-                                                    onCancel={(e) => e.stopPropagation()}
-                                                    okText="Sí"
-                                                    cancelText="No"
-                                                >
-                                                    <Button danger size="small" onClick={(e) => e.stopPropagation()}>
-                                                        Eliminar
-                                                    </Button>
-                                                </Popconfirm>
-                                            </div>
-                                        </Card>
-                                    );
-                                })}
-                            </Panel>
-                        ))}
-                    </Collapse>
+        <Layout style={{ height: '100vh' }}>
+            <div style={{ position: 'relative' }}>
+                {/* Botón visible siempre, ahora abajo a la izquierda */}
+                <div
+                    style={{
+                        position: 'absolute',
+                        bottom: 16,
+                        left: siderCollapsed ? 0 : 300,
+                        zIndex: 1000,
+                        transition: 'left 0.3s ease',
+                    }}
+                >
+                    <Button
+                        type="default"
+                        icon={siderCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                        onClick={() => setSiderCollapsed(!siderCollapsed)}
+                        style={{
+                            padding: '8px 16px',
+                            fontSize: '16px',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                        }}
+                        className='border-2 border-blue-500'
+                    />
                 </div>
 
-                <div ref={visorRef} className="w-2/3 h-[80vh] overflow-y-auto border-l pl-4 flex flex-col items-center">
+                <Sider
+                    width={300}
+                    collapsed={siderCollapsed}
+                    collapsedWidth={0}
+                    onCollapse={setSiderCollapsed}
+                    theme="light"
+                    className="border-r bg-white overflow-y-auto transition-all duration-300"
+                    style={{ height: '100vh', position: 'relative' }}
+                >
+                    <div className="p-4 pt-4">
+                        <Title level={5}>Archivo de DUA: {numero}-{anio}</Title>
+                        <Collapse
+                            accordion
+                            activeKey={activeCollapseKey}
+                            onChange={(key) => setActiveCollapseKey(key)}
+                        >
+                            {Object.entries(documentosAgrupados).map(([tipo, documentos]) => (
+                                <Panel header={`${tipo} (${documentos.length})`} key={tipo}>
+                                    {documentos.map((doc) => {
+                                        const isSelected = doc.documento_id === documentoActualId;
+                                        return (
+                                            <Card
+                                                key={doc.id}
+                                                size="small"
+                                                className={`mb-2 p-2 transition-shadow cursor-pointer ${isSelected ? 'shadow-md border border-blue-500' : 'hover:shadow'} rounded-lg`}
+                                                onClick={() => handleSeleccionarDocumento(doc.documento_id, doc.id)}
+                                            >
+                                                <div className="flex justify-between items-center gap-2">
+                                                    {/* Sección del ícono y texto */}
+                                                    <div className="flex flex-col overflow-hidden">
+                                                        <div className="flex items-center gap-2">
+                                                            <FilePdfOutlined className="text-red-500 text-lg shrink-0" />
+                                                            {/* Nombre truncado con tooltip */}
+                                                            <Tooltip title={doc.nombre_original}>
+                                                                <Text
+                                                                    className="truncate max-w-[180px] text-sm font-medium"
+                                                                    ellipsis
+                                                                >
+                                                                    {doc.nombre_original}
+                                                                </Text>
+                                                            </Tooltip>
+                                                        </div>
+                                                        <Text type="secondary" className="text-xs mt-1 truncate max-w-[180px]">
+                                                            {doc.usuario}
+                                                        </Text>
+                                                    </div>
+
+                                                    {/* Botón eliminar con ícono */}
+                                                    <Popconfirm
+                                                        title="¿Eliminar documento?"
+                                                        onConfirm={(e) => {
+                                                            e.stopPropagation();
+                                                            handleEliminarDocumento(doc.id);
+                                                        }}
+                                                        onCancel={(e) => e.stopPropagation()}
+                                                        okText="Sí"
+                                                        cancelText="No"
+                                                    >
+                                                        <Button
+                                                            danger
+                                                            shape="circle"
+                                                            icon={<DeleteOutlined />}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        />
+                                                    </Popconfirm>
+                                                </div>
+                                            </Card>
+                                        );
+                                    })}
+                                </Panel>
+                            ))}
+                        </Collapse>
+                    </div>
+                </Sider>
+            </div>
+            <Layout>
+                <Content ref={visorRef} className="p-2 overflow-y-auto">
                     {loading ? (
                         <Spin />
                     ) : selectedDocBlobUrl ? (
                         <>
-                            <div className="mb-2 flex gap-2 items-center justify-between w-full pr-4">
-                                <div className="flex gap-2 items-center">
+                            <div className="sticky top-0 z-10 bg-gray-300/35 rounded-md p-2 border-b mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-wrap">
+                                {/* Controles de Zoom */}
+                                <div className="flex gap-2 items-center flex-shrink-0">
                                     <Button icon={<ZoomOutOutlined />} onClick={() => setZoomLevel(z => Math.max(z - 0.1, 0.5))} />
                                     <Button icon={<ZoomInOutlined />} onClick={() => setZoomLevel(z => Math.min(z + 0.1, 3))} />
-                                    <span className="text-sm text-gray-600">Zoom: {(zoomLevel * 100).toFixed(0)}%</span>
+                                    <span className="text-sm text-gray-700 whitespace-nowrap">Zoom: {(zoomLevel * 100).toFixed(0)}%</span>
                                 </div>
-                                <div className="flex gap-2 items-center">
+
+                                {/* Campo de Folio y Botón */}
+                                <div className="flex gap-2 items-center flex-shrink-0">
                                     <input
                                         ref={inputRef}
                                         type="text"
@@ -258,32 +321,36 @@ const VistaArchivoDua = () => {
                                             if (e.key === 'Enter' && folio.trim()) await guardarFolio();
                                         }}
                                         placeholder="Ingrese folio"
-                                        className="border px-2 py-1 rounded w-64"
+                                        className="border border-gray-300 px-3 py-1.5 rounded-md w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                     <Button
                                         type="primary"
                                         disabled={!folio.trim()}
                                         onClick={guardarFolio}
+                                        className="whitespace-nowrap"
                                     >
-                                        {savingFolio ? <LoadingOutlined /> : (folioGuardado ? "Actualizar" : "Guardar")}
+                                        {savingFolio ? <LoadingOutlined /> : <SaveOutlined/>}
                                     </Button>
                                 </div>
                             </div>
-                            <Document
-                                file={selectedDocBlobUrl}
-                                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                            >
-                                {Array.from(new Array(numPages), (_, index) => (
-                                    <Page key={index + 1} pageNumber={index + 1} scale={zoomLevel} />
-                                ))}
-                            </Document>
+
+                            <div className="flex justify-center">
+                                <div className="w-fit">
+                                    <Document file={selectedDocBlobUrl} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+                                        {Array.from(new Array(numPages), (_, index) => (
+                                            <Page key={index + 1} pageNumber={index + 1} scale={zoomLevel} />
+                                        ))}
+                                    </Document>
+                                </div>
+                            </div>
+
                         </>
                     ) : (
-                        <Empty description="Selecciona un documento del panel izquierdo para visualizarlo" />
+                        <Empty description="Selecciona un documento para visualizarlo" />
                     )}
-                </div>
-            </div>
-        </div>
+                </Content>
+            </Layout>
+        </Layout>
     );
 };
 

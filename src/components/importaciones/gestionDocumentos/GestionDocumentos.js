@@ -319,7 +319,7 @@ const ListadoDeclaraciones = () => {
               type="link"
             />
           </Tooltip>
-          <Tooltip title="editar" key="edit-tooltip">
+          <Tooltip title="Asignar Archivo" key="asignar-archivo-tooltip">
             <Button
               icon={<SnippetsOutlined />}
               onClick={() => handleCrearExpediente(record.id,record.numero,record.anio)} // ¡Aquí le pasamos el Id de la declaración!
@@ -400,18 +400,7 @@ const ListadoDeclaraciones = () => {
                       />
                     </Tooltip>
 
-                  ),
-                  item.nombre_original.toLowerCase().endsWith('.pdf') && (
-                    <Tooltip title="editar" key="edit-tooltip">
-                      <Button
-                        icon={<AiOutlineEdit />}
-                        onClick={() => handleEditarPdf(item.id)} // ¡Aquí le pasamos el ID del documento!
-                        type="link"
-                        key="edit-button"
-                      />
-                    </Tooltip>
-                  ),
-
+                  ),                 
                   <Tooltip title="Descargar" key="download-tooltip">
                     <Button
                       icon={<AiOutlineDownload />}
