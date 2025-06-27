@@ -100,6 +100,21 @@ export const ActualizarMesAnioFiscal = async (declaracionId,anioFiscal, mesFisca
   }
 };
 
+export const ActualizarOrdenCompraNotaIngreso= async (declaracionId,notaIngreso, ordenCompra) => {
+  try {
+    const response = await axiosInstance.post(`/importaciones/expedientes/${declaracionId}/actualizar_nota_ingreso_orden_compra/`, {
+      nota_ingreso: notaIngreso,
+      orden_compra: ordenCompra,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error actualizando orden de compra y nota de ingreso:", error);
+    throw error;
+  }
+};
+
+
+
 export const ActualizarFolioDocumentoExpediente = async (idDocumento, folio) => {
   try {
     const response = await axiosInstance.patch(`/importaciones/expedientes/${idDocumento}/actualizar-folio/`, {

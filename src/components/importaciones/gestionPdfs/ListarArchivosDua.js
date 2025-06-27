@@ -15,7 +15,8 @@ import {
   AiOutlineCalendar,
   AiOutlineShop,
   AiOutlineDownload,
-  AiOutlineEye, // Importamos el icono de visualización
+  AiOutlineEye,
+  AiOutlineSnippets, // Importamos el icono de visualización
 } from "react-icons/ai";
 import dayjs from 'dayjs';
 import { SearchOutlined } from "@ant-design/icons"; // Importamos el icono de búsqueda
@@ -26,7 +27,8 @@ import {
   obtenerDocumentosExpedienteAgrupadosPorTipo,
   ActualizarMesAnioFiscal,
   ActualizarEmpresaDocumentoExpediente,
-  descargarDocumentosExpedienteUnificados
+  descargarDocumentosExpedienteUnificados,
+  ActualizarOrdenCompraNotaIngreso,
 } from "../../../api/Documentos";
 
 
@@ -34,9 +36,12 @@ const ListadoDeclaraciones = () => {
   const [declaraciones, setDeclaraciones] = useState([]);
   const [modalAgregarVisible, setModalAgregarVisible] = useState(false);
   const [modalEmpresaVisible, setModalEmpresaVisible] = useState(false);
+  const [modalOCvisible, setModalOCvisible] = useState(false);
   const [empresa, setEmpresa] = useState(null);
   const [declSeleccionada, setDeclSeleccionada] = useState(null);
   const navigate = useNavigate();
+  const [ordenCompra, setOrdenCmpra] = useState(null);
+  const [notaIngreso, setNotaIngreso] = useState(null);
   const [mes, setMes] = useState(dayjs().month() + 1); // dayjs().month() va de 0 a 11
   const [anio, setAnio] = useState(dayjs().year());
 
@@ -84,14 +89,20 @@ const ListadoDeclaraciones = () => {
     setModalAgregarVisible(true);
   };
 
+  const handleMostrarModalAgregarOC = (declaracion) => {
+    setDeclSeleccionada(declaracion);
+    setModalOCvisible(true);
+  };
+
+
   const handleMostrarModalAsignarEmpresa = (declaracion) => {
     setDeclSeleccionada(declaracion);
     setModalEmpresaVisible(true);
   }
 
-  const handleAsignarEmpresa = async() => {
+  const handleAsignarEmpresa = async () => {
     try {
-      await ActualizarEmpresaDocumentoExpediente(declSeleccionada.id,empresa);
+      await ActualizarEmpresaDocumentoExpediente(declSeleccionada.id, empresa);
       setModalEmpresaVisible(false)
       message.success("empresa actualizada exitosamente");
       cargarDeclaraciones(); // recarga los datos
@@ -99,7 +110,23 @@ const ListadoDeclaraciones = () => {
       console.error("Error al actualizar empresa:", error);
       message.error("Error al actualizar empresa");
     }
-  }  
+  }
+
+  const handleAgregarOC = async () => {
+    try {
+      await ActualizarOrdenCompraNotaIngreso(declSeleccionada.id, notaIngreso,ordenCompra);
+      setModalOCvisible(false)
+      setNotaIngreso('');
+      setOrdenCmpra('');
+      message.success("Nota de ingreso y Orden compra actualizados correctamente");
+      cargarDeclaraciones(); // recarga los datos
+    } catch (error) {
+      console.error("Error al actualizar orden Compra y nota de ingreso:", error);
+      message.error("Error al actualizar Orden Compra y nota de ingreso");
+    }
+  }
+
+
 
   const handleVerArchivo = async (declaracion) => {
     setDeclSeleccionada(declaracion);
@@ -256,6 +283,15 @@ const ListadoDeclaraciones = () => {
               type="link"
             />
           </Tooltip>
+
+          <Tooltip title="Agregar OC - NI" key="agregar-oc-ni-tooltip">
+            <Button
+              icon={<AiOutlineSnippets />}
+              onClick={() => handleMostrarModalAgregarOC(record)}
+              type="link"
+            />
+          </Tooltip>
+
           <Tooltip title="Asignar empresa" key="agregar-empresa-tooltip">
             <Button
               icon={<AiOutlineShop />}
@@ -295,8 +331,7 @@ const ListadoDeclaraciones = () => {
           pagination={{
             position: ["bottomLeft"],
             showSizeChanger: true,
-            pageSizeOptions: ["10", "20", "50", "100"],
-            current: 1,
+            pageSizeOptions: ["10", "20", "50", "100"],            
           }}
         />
         <Modal
@@ -351,6 +386,34 @@ const ListadoDeclaraciones = () => {
                 value={empresa}            // Asegúrate de tener este estado definido
                 onChange={setEmpresa}      // Y esta función de cambio
                 placeholder="Seleccione una empresa"
+              />
+            </div>
+          </div>
+        </Modal>
+
+        <Modal
+          title={`Asignar OC y NI: ${declSeleccionada?.numero_declaracion} - ${declSeleccionada?.anio_declaracion || ''}`}
+          open={modalOCvisible}
+          onCancel={() => setModalOCvisible(false)}
+          onOk={() => handleAgregarOC()}
+          okText="Aceptar"
+          cancelText="Cancelar"
+        >
+          <div className="flex gap-4 mt-4">
+            <div className="w-1/2">
+              <label className="block mb-1 text-sm font-medium">Orden Compra</label>
+              <Input
+                placeholder="Ingrese Orden de Compra"
+                value={ordenCompra}
+                onChange={(e) => setOrdenCmpra(e.target.value)}
+              />
+            </div>
+            <div className="w-1/2">
+              <label className="block mb-1 text-sm font-medium">Nota de ingreso</label>
+              <Input
+                placeholder="Ingrese Nota de Ingreso"
+                value={notaIngreso}
+                onChange={(e) => setNotaIngreso(e.target.value)}
               />
             </div>
           </div>

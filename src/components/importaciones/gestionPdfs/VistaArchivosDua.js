@@ -17,7 +17,8 @@ import {
     Popconfirm,
     Modal,
     Card,
-    Tooltip
+    Tooltip,
+    Tag
 } from 'antd';
 import {
     FilePdfOutlined,
@@ -263,6 +264,18 @@ const VistaArchivoDua = () => {
                                                                 </Text>
                                                             </Tooltip>
                                                         </div>
+                                                        <div className="flex gap-2 mt-1 flex-wrap">
+                                                            {doc.nota_ingreso && (
+                                                                <Tag color="green" className="text-xs">
+                                                                    NI: {doc.nota_ingreso}
+                                                                </Tag>
+                                                            )}
+                                                            {doc.orden_compra && (
+                                                                <Tag color="orange" className="text-xs">
+                                                                    OC: {doc.orden_compra}
+                                                                </Tag>
+                                                            )}
+                                                        </div>
                                                         <Text type="secondary" className="text-xs mt-1 truncate max-w-[180px]">
                                                             {doc.usuario}
                                                         </Text>
@@ -329,7 +342,7 @@ const VistaArchivoDua = () => {
                                         onClick={guardarFolio}
                                         className="whitespace-nowrap"
                                     >
-                                        {savingFolio ? <LoadingOutlined /> : <SaveOutlined/>}
+                                        {savingFolio ? <LoadingOutlined /> : <SaveOutlined />}
                                     </Button>
                                 </div>
                             </div>

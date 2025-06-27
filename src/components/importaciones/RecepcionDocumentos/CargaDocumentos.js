@@ -15,6 +15,7 @@ const RecepcionDocumentos = () => {
   const [formZip] = Form.useForm();
   const [archivoZip, setArchivoZip] = useState(null);
   const [archivoTemp, setArchivoTemp] = useState(null);
+  const [fileList2, setFileList2] = useState([]);
   const [carpetas, setCarpetas] = useState([]);
   const [duasPorCarpeta, setDuasPorCarpeta] = useState({});
   const [loading, setLoading] = useState(false);
@@ -130,7 +131,7 @@ const RecepcionDocumentos = () => {
                 declaraciones:
               </p>
               <ul>
-                {res.data.archivos_omitidos.map((item, index) => (
+                {archivosOmitidos.map((item, index) => (
                   <li key={index}>
                     <strong>{item.archivo}</strong> ya está en la DUA{" "}
                     <strong>{item.registrado_en}</strong>
@@ -141,6 +142,7 @@ const RecepcionDocumentos = () => {
           ),
           width: 600,
         });
+        setFileList2([])
       } else {
         message.success("Documentos registrados correctamente.");
       }
@@ -178,6 +180,12 @@ const RecepcionDocumentos = () => {
               label="Número de DUA"
               name="numero_dua"
               rules={[{ required: true, message: "Ingrese un número de DUA" }]}
+              getValueFromEvent={(e) => {
+                const raw = e.target.value;
+                // Elimina todo lo que no sea dígito y quita ceros iniciales
+                const cleaned = raw.replace(/\D/g, '').replace(/^0+/, '');
+                return cleaned;
+              }}
             >
               <Input placeholder="Ejemplo: 123456789" />
             </Form.Item>
@@ -226,15 +234,19 @@ const RecepcionDocumentos = () => {
           <Form form={formZip} layout="vertical">
             <Form.Item label="Archivo ZIP o RAR">
               <Dragger
+                key={fileList2.length} 
                 accept=".zip,.rar"
-                multiple={false} // ← Esto es clave
+                multiple={false}
+                fileList={fileList2}
                 beforeUpload={(file) => {
                   setArchivoZip(file);
-                  return false; // Evita el upload automático
+                  setFileList2([file]);
+                  return false;
                 }}
                 onRemove={() => {
                   setArchivoZip(null);
                   setArchivoTemp(null);
+                  setFileList2([]);
                 }}
                 showUploadList={{ showRemoveIcon: true }}
               >
@@ -246,6 +258,8 @@ const RecepcionDocumentos = () => {
                 </p>
               </Dragger>
             </Form.Item>
+
+
 
             <Button
               onClick={handleZipProcesar}
@@ -264,20 +278,24 @@ const RecepcionDocumentos = () => {
                 {carpetas.map((carpeta, index) => (
                   <div key={index} className="flex gap-2 items-center mb-2">
                     <span className="w-1/3">{carpeta}</span>
+
                     <Input
                       placeholder="Número de DUA"
                       className="w-1/3"
                       value={duasPorCarpeta[carpeta]?.numero_dua || ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const cleaned = raw.replace(/\D/g, '').replace(/^0+/, '');
                         setDuasPorCarpeta((prev) => ({
                           ...prev,
                           [carpeta]: {
                             ...(prev[carpeta] || {}),
-                            numero_dua: e.target.value,
+                            numero_dua: cleaned,
                           },
-                        }))
-                      }
+                        }));
+                      }}
                     />
+
                     <Input
                       placeholder="Año"
                       className="w-1/3"
