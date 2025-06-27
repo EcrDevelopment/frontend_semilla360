@@ -187,6 +187,9 @@ const VistaArchivoDua = () => {
         try {
             await ActualizarFolioDocumentoExpediente(expedienteActualId, folio.trim());
             setFolioGuardado(folio.trim());
+            //Recargar los documentos agrupados con los datos nuevos
+            const data = await obtenerDocumentosExpedienteAgrupadosPorTipo(id);
+            setDocumentosAgrupados(data || {});
             message.success('Folio actualizado correctamente');
         } catch {
             message.error('Error al actualizar folio');
