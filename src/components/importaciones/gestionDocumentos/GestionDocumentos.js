@@ -84,32 +84,60 @@ const ListadoDeclaraciones = () => {
     navigate(`/editar-pdf/${id}`);
   }
 
-  const handleCrearExpediente = (id,numero,anio) => {
+  const handleCrearExpediente = (id, numero, anio) => {
     navigate(`/importaciones/crear-archivo-dua/${id}/${numero}/${anio}`);
   }
 
   const handleSubirArchivos = async () => {
     try {
       if (fileList.length === 0) {
-        message.warning(
-          "Por favor, selecciona al menos un archivo para subir."
-        );
+        message.warning("Por favor, selecciona al menos un archivo para subir.");
         return;
       }
+
       const archivos = fileList.map((file) => file.originFileObj);
-      await subirArchivosIndividuales(
+
+      // CAPTURAMOS EL RESULTADO AQUÍ 👇
+      const res = await subirArchivosIndividuales(
         declSeleccionada.numero,
         declSeleccionada.anio,
         archivos
       );
-      message.success("Archivos cargados exitosamente");
-      setModalAgregarVisible(false);
-      cargarDeclaraciones();
+
+      // Validamos si hubo archivos omitidos
+      if (res?.data?.archivos_omitidos?.length > 0) {
+        Modal.warning({
+          title: "Carga completada con advertencias",
+          content: (
+            <div>
+              <p>
+                Los siguientes archivos ya están registrados en otras declaraciones:
+              </p>
+              <ul>
+                {res.data.archivos_omitidos.map((item, index) => (
+                  <li key={index}>
+                    <strong>{item.archivo}</strong> ya está en la DUA{" "}
+                    <strong>{item.registrado_en}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ),
+          width: 600,
+        });
+        setModalAgregarVisible(false);
+      } else {
+        message.success("Archivos cargados correctamente.");
+        setModalAgregarVisible(false);
+        cargarDeclaraciones();
+      }
+
     } catch (err) {
       console.error("Error al subir archivos:", err);
       message.error("Error al subir archivos.");
     }
   };
+
 
   const handleEliminar = async (idDoc) => {
     try {
@@ -322,7 +350,7 @@ const ListadoDeclaraciones = () => {
           <Tooltip title="Asignar Archivo" key="asignar-archivo-tooltip">
             <Button
               icon={<SnippetsOutlined />}
-              onClick={() => handleCrearExpediente(record.id,record.numero,record.anio)} // ¡Aquí le pasamos el Id de la declaración!
+              onClick={() => handleCrearExpediente(record.id, record.numero, record.anio)} // ¡Aquí le pasamos el Id de la declaración!
               type="link"
               key="expediente-button"
             />
@@ -333,7 +361,7 @@ const ListadoDeclaraciones = () => {
               onClick={() => handleDescargarZIP(record)}
               type="link"
             />
-          </Tooltip>         
+          </Tooltip>
 
         </Space>
       ),
@@ -399,7 +427,7 @@ const ListadoDeclaraciones = () => {
                       />
                     </Tooltip>
 
-                  ),                 
+                  ),
                   <Tooltip title="Descargar" key="download-tooltip">
                     <Button
                       icon={<AiOutlineDownload />}

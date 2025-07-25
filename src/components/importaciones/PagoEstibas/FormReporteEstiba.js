@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Form, DatePicker, Button, message, Table,Select,Option } from 'antd';
+import { Form, DatePicker, Button, message, Table, Select, Option } from 'antd';
 import axiosInstance from '../../../axiosConfig';
 import dayjs from "dayjs";
 
@@ -44,7 +44,7 @@ function ReporteEstiba() {
 
         try {
             const response = await axiosInstance.get("/importaciones/generar-reporte-estiba/", {
-                params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin,empresa:empresa },
+                params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin, empresa: empresa },
             });
 
             if (response.data.status === "success") {
@@ -62,19 +62,44 @@ function ReporteEstiba() {
         }
     };
 
-    /*
-    const disabledFechaFin = (current) => {
-        return fechaInicio ? current && current.isBefore(fechaInicio, 'day') : false;
+    const handleExportarExcel = async () => {
+        try {
+            const values = await form.validateFields();
+            const fechaInicio = values.rangoFechas ? dayjs(values.rangoFechas[0]).format("YYYY-MM-DD") : "";
+            const fechaFin = values.rangoFechas ? dayjs(values.rangoFechas[1]).format("YYYY-MM-DD") : "";
+            const empresa = values.empresa ? values.empresa : "";
+
+            const response = await axiosInstance.get(
+                "/importaciones/exportar-reporte-estiba/",
+                {
+                    params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin, empresa },
+                    responseType: 'blob',
+                }
+            );
+
+            const blob = new Blob([response.data], { type: response.headers['content-type'] });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `reporte_estiba_${fechaInicio}_${fechaFin}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            message.success("Archivo descargado con éxito");
+        } catch (error) {
+            console.error("Error al exportar:", error);
+            message.error("Hubo un error al exportar el Excel");
+        }
     };
-    */
+
 
     const columns = [
         { title: "Estado", dataIndex: "pago_estiba", key: "pago_estiba" },
         { title: "Placa", dataIndex: "placa_llegada", key: "placa" },
         { title: "DUA", dataIndex: "despacho__dua", key: "dua" },
-        { title: "Transportista", dataIndex: "despacho__transportista__nombre_transportista", key: "transportista" },        
-        { title: "Total sacos", dataIndex: "sacos_descargados", key: "sacos_descargados", align: 'center' },  
-        { title: "Sacos Pend. Pago", dataIndex: "cant_desc", key: "cant_desc", align: 'center' },      
+        { title: "Transportista", dataIndex: "despacho__transportista__nombre_transportista", key: "transportista" },
+        { title: "Total sacos", dataIndex: "sacos_descargados", key: "sacos_descargados", align: 'center' },
+        { title: "Sacos Pend. Pago", dataIndex: "cant_desc", key: "cant_desc", align: 'center' },
         { title: "Total a pagar", dataIndex: "total_a_pagar", key: "total_a_pagar", align: 'right', className: 'column-money' },
     ];
 
@@ -87,7 +112,7 @@ function ReporteEstiba() {
                         label="Empresa"
                         name="empresa"
                         rules={[{ required: true, message: 'Por favor, selecciona una empresa' }]} >
-                        <Select                           
+                        <Select
                             placeholder="Selecciona una empresa"
                             className="w-full"
                         >
@@ -96,15 +121,24 @@ function ReporteEstiba() {
                             <Option value="bd_trading_starsoft">TRADING SEMILLA SAC</Option>
                         </Select>
                     </Form.Item>
-                    <Form.Item 
-                    name="rangoFechas"
-                    rules={[{ required: true, message: 'Por favor selecciona un rango de fechas' }]} 
+                    <Form.Item
+                        name="rangoFechas"
+                        rules={[{ required: true, message: 'Por favor selecciona un rango de fechas' }]}
                     >
                         <RangePicker format={"DD/MM/YYYY"} disabledDate={disabled15DaysDate} />
-                    </Form.Item>                   
+                    </Form.Item>
                     <Button type="primary" htmlType="submit" loading={loading}>
                         Generar
                     </Button>
+                    <Button
+                        type="default"
+                        onClick={() => handleExportarExcel()}
+                        disabled={loading}
+                        className="ml-2 bg-green-500 text-white hover:border-green-700 hover:text-green-700"
+                    >
+                        Exportar a Excel
+                    </Button>
+
                 </Form>
             </div>
 
@@ -113,7 +147,7 @@ function ReporteEstiba() {
                     dataSource={reportData}
                     columns={columns}
                     rowKey="id"
-                    pagination={{ position:['bottomLeft'] , pageSize: 10 }}
+                    pagination={{ position: ['bottomLeft'], pageSize: 10 }}
                     loading={loading}
                 />
             </div>

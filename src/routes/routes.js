@@ -21,8 +21,12 @@ import CrearArchivoDua from '../components/importaciones/gestionPdfs/CrearArchiv
 import ListarArchivos from '../components/importaciones/gestionPdfs/ListarArchivosDua';
 import VistaArchivoDua from '../components/importaciones/gestionPdfs/VistaArchivosDua';
 import CrudTipoDocumentos from '../components/tipoDocumentos/TipoDocumentos';
+import EditarFlete from '../components/importaciones/Despachos/formularioDespacho';
+
+
 
 const AppRoutes = ({ resetContent }) => (
+  
   <Routes>
     <Route path="/" element={<HomePage />} />
     <Route path="/about" element={<AboutPage />} />
@@ -35,7 +39,11 @@ const AppRoutes = ({ resetContent }) => (
       <ProtectedRoute requiredPermission="importaciones.registrar_flete_internacional">
         <CalculoFlete resetContent={resetContent}/>
       </ProtectedRoute>     
-    } />   
+    } />  
+
+    <Route path="importaciones/editar-flete/:id" element={<EditarFlete resetContent={resetContent} />} />
+
+
     <Route path="/importaciones/reporte-estiba" element={
       <ProtectedRoute requiredPermission="importaciones.ver_reporte_estibas">
         <ReporteEstiba resetContent={resetContent}/>
