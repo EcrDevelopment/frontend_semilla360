@@ -322,7 +322,7 @@ function ListadoFletes() {
         okText="Guardar"
         cancelText="Cancelar"
       >
-        <p className="text-xs text-gray-400">Esta fecha es  la que se considera para el reporte de calculo de flete</p>
+        <p className="text-xs text-gray-400">Esta fecha es  la que se considera para el reporte de estibas</p>
         <DatePicker
           className="w-full"
           format="DD/MM/YYYY"

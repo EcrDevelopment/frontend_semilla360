@@ -52,6 +52,7 @@ function FormularioExtra({ onDataValidate, precio, cantidad }) {
                     precioSacosHumedos: 3,
                     gastosNacionalizacion: 5,
                     margenFinanciero: 20,
+                    precioEstibaTonelada: 4.7,
                     tipoCambioDescExt: 2.247
                 }}
             >
@@ -218,6 +219,27 @@ function FormularioExtra({ onDataValidate, precio, cantidad }) {
                                 step={0.01}
                                 style={{ width: '100%' }}
                                 prefix="$"
+                            />
+                        </Form.Item>
+                    </div>
+
+                    <div className="">
+                        <Form.Item
+                            label="Precio estiba x TM "
+                            name="precioEstibaTonelada"
+                            rules={[{
+                                required: true,
+                                message: 'Por favor, ingresa el monto',
+                            }, {
+                                type: 'number',
+                                transform: (value) => value ? parseFloat(value) : 0,
+                                message: 'El monto debe ser un número decimal',
+                            }]}>
+                            <InputNumber
+                                min={1.0}
+                                step={0.01}
+                                style={{ width: '100%' }}
+                                prefix="S/"
                             />
                         </Form.Item>
                     </div>

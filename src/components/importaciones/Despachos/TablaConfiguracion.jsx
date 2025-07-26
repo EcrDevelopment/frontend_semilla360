@@ -17,8 +17,18 @@ export default function FormularioConfiguracion({ despachoId }) {
       const data = res.data;
       setIdConfiguracion(data.id);
       setValoresIniciales(data);
-      form.setFieldsValue(data);
+
+      // ✅ Convertir todos los valores a number si no son nulos
+      const datosNumericos = Object.fromEntries(
+        Object.entries(data).map(([key, value]) => [
+          key,
+          value !== null && value !== undefined ? Number(value) : value,
+        ])
+      );
+
+      form.setFieldsValue(datosNumericos);
     } catch (err) {
+      console.error("Error al cargar configuración:", err);
       message.error("Error al cargar configuración");
     } finally {
       setCargando(false);
@@ -32,11 +42,12 @@ export default function FormularioConfiguracion({ despachoId }) {
   }, [despachoId]);
 
   const onValuesChange = (_, allValues) => {
-    const cambios = JSON.stringify(allValues) !== JSON.stringify(valoresIniciales);
+    const cambios = JSON.stringify({ ...valoresIniciales, ...allValues }) !== JSON.stringify(valoresIniciales);
     setHayCambios(cambios);
   };
 
   const onFinish = async (values) => {
+    console.log("✅ onFinish ejecutado con:", values);
     try {
       await editarConfiguracionDespacho(idConfiguracion, values);
       message.success("Configuración actualizada");
@@ -44,15 +55,19 @@ export default function FormularioConfiguracion({ despachoId }) {
       setHayCambios(false);
       setValoresIniciales(values);
     } catch (err) {
+      console.error("❌ Error en onFinish:", err);
       message.error("Error al guardar");
     }
   };
 
   const guardarConfiguracion = async () => {
     try {
-      const values = await form.validateFields();
+      await form.validateFields();
+      const values = form.getFieldsValue(true);
+      console.log("✅ Valores validados:", values);
       await onFinish(values);
     } catch (error) {
+      console.error("❌ Error en validación:", error);
       message.error("Corrige los errores antes de guardar.");
     }
   };
@@ -64,14 +79,30 @@ export default function FormularioConfiguracion({ despachoId }) {
   };
 
   const renderItem = (name, label, precision = 2) => (
-    <Col xs={24} sm={12} md={8}>
+    <Col xs={24} sm={12} md={8} key={name}>
       <Form.Item
         name={name}
         label={label}
         rules={[
-          { required: true, message: "Este campo es obligatorio" },
-          { type: 'number', message: "Debe ser un número válido" },
-          { validator: (_, value) => value >= 0 ? Promise.resolve() : Promise.reject("Debe ser un número positivo") }
+          {
+            required: true,
+            message: "Este campo es obligatorio",
+          },
+          {
+            validator: (_, value) => {
+              if (value === undefined || value === null || value === '') {
+                return Promise.reject("Este campo es obligatorio");
+              }
+              const numero = Number(value);
+              if (isNaN(numero)) {
+                return Promise.reject("Debe ser un número válido");
+              }
+              if (numero < 0) {
+                return Promise.reject("Debe ser un número positivo");
+              }
+              return Promise.resolve();
+            },
+          },
         ]}
         validateTrigger="onChange"
       >
@@ -80,7 +111,7 @@ export default function FormularioConfiguracion({ despachoId }) {
           min={0}
           precision={precision}
           disabled={!modoEdicion}
-          onKeyPress={(e) => {
+          onKeyDown={(e) => {
             if (!/[0-9.]|\./.test(e.key)) e.preventDefault();
           }}
         />
@@ -89,7 +120,7 @@ export default function FormularioConfiguracion({ despachoId }) {
   );
 
   return (
-    <div className=''>
+    <div>
       <Form
         form={form}
         layout="vertical"
@@ -105,6 +136,7 @@ export default function FormularioConfiguracion({ despachoId }) {
           {renderItem("precio_sacos_humedos", "Precio Sacos Húmedos")}
           {renderItem("precio_sacos_mojados", "Precio Sacos Mojados")}
           {renderItem("tipo_cambio_desc_ext", "Tipo Cambio Desc. Ext.", 3)}
+          {renderItem("precio_estiba", "Precio Estiba x TM")}
         </Row>
 
         <div className="text-right space-x-2 mt-4">
