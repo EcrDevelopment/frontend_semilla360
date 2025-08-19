@@ -175,13 +175,14 @@ const ListadoDeclaraciones = () => {
         <Table
           columns={columns}
           dataSource={declaraciones}
-          rowKey="id"
+          size="small"
+          rowKey="id"          
           pagination={{
             position: ["bottomLeft"],
             showSizeChanger: true,
-            pageSizeOptions: ["10", "20", "50", "100"],
-            current: 1,
+            pageSizeOptions: ["10", "20", "50", "100"],            
           }}
+          
         />
 
         <Modal

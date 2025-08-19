@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Table,
   Dropdown,
@@ -8,8 +8,9 @@ import {
   message,
   Modal,
   DatePicker,
+  Input
 } from "antd";
-import { DownOutlined } from "@ant-design/icons";
+import { DownOutlined, SearchOutlined } from "@ant-design/icons";
 import qs from "qs";
 import axiosInstance from "../../../axiosConfig";
 import dayjs from "dayjs";
@@ -18,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 function ListadoFletes() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const searchInputRef = useRef(null);
   const [tableParams, setTableParams] = useState({
     pagination: {
       position: ["bottomLeft"],
@@ -37,6 +39,15 @@ function ListadoFletes() {
     { key: "3", label: "Ver reporte 1" },
     { key: "4", label: "Ver reporte 2" },
   ];
+
+  const handleSearch = (selectedKeys, confirm) => {
+    confirm(); // aplica el filtro
+  };
+
+  const handleReset = (clearFilters, confirm) => {
+    clearFilters(); // limpia el filtro
+    confirm(); // aplica sin filtro
+  };
 
   const handleMenuClick = (e, id) => {
     switch (e.key) {
@@ -59,7 +70,7 @@ function ListadoFletes() {
 
   const handleEditarFlete = (id) => {
     //message.success("Editando flete con id: " + id);
-    navigate(`/importaciones/editar-flete/${id}` );
+    navigate(`/importaciones/editar-flete/${id}`);
   };
 
   const handleMostrarModalFechaLlegadaFlete = (id) => {
@@ -70,7 +81,7 @@ function ListadoFletes() {
       // Convertir a objeto dayjs para que funcione con DatePicker
       setFecha(dayjs(despacho.fecha_llegada));
     } else {
-      setFecha(null); 
+      setFecha(null);
     }
     setOpenModal(true);
   };
@@ -141,7 +152,7 @@ function ListadoFletes() {
     try {
       const response = await axiosInstance.delete(`importaciones/despachos/${id}/eliminar/`);
       message.success(response.data.message);
-      fetchData(); // recargar tabla
+      fetchData(tableParams); // recargar tabla
     } catch (error) {
       message.error("Error al eliminar el despacho");
     }
@@ -152,7 +163,7 @@ function ListadoFletes() {
     page_size: params.pagination?.pageSize,
     sortField: params.sortField,
     sortOrder: params.sortOrder,
-    filters: params.filters,
+    dua: params.filters?.dua ? params.filters.dua[0] : undefined,
   });
 
   const fetchData = async (params) => {
@@ -202,6 +213,52 @@ function ListadoFletes() {
     </div>
   );
 
+  const getColumnSearchProps = (dataIndex) => ({
+    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+      <div style={{ padding: 8 }}>
+        <Input
+          ref={searchInputRef}
+          placeholder={`Buscar ${dataIndex}`}
+          value={selectedKeys[0]}
+          onChange={(e) =>
+            setSelectedKeys(e.target.value ? [e.target.value] : [])
+          }
+          onPressEnter={() => handleSearch(selectedKeys, confirm)}
+          style={{ marginBottom: 8, display: "block" }}
+        />
+        <Space>
+          <Button
+            type="primary"
+            onClick={() => handleSearch(selectedKeys, confirm)}
+            icon={<SearchOutlined />}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Buscar
+          </Button>
+          <Button
+            onClick={() => clearFilters && handleReset(clearFilters, confirm)}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Reset
+          </Button>
+        </Space>
+      </div>
+    ),
+    filterIcon: (filtered) => (
+      <SearchOutlined style={{ color: filtered ? "#1890ff" : undefined }} />
+    ),
+    filterDropdownProps: {
+      onOpenChange: (visible) => {
+        if (visible) {
+          setTimeout(() => searchInputRef.current?.select(), 100);
+        }
+      },
+    },
+  });
+
+
   const columns = [
     {
       title: "ID",
@@ -214,6 +271,7 @@ function ListadoFletes() {
       dataIndex: "dua",
       key: "dua",
       sorter: true,
+      ...getColumnSearchProps("dua", "Buscar DUA"),
     },
     {
       title: "OC",
