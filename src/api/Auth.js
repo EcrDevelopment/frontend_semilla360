@@ -1,24 +1,62 @@
-import axiosInstance from '../axiosConfig';
-import { setAuthCookies } from '../axiosConfig';
+// src/api/Auth.js
+import axiosInstance, { setAuthCookies, getTokenFromCookie } from '../axiosConfig';
 
-export async function validateToken(token) {
-  try {
-    // Obtener el token más reciente de las cookies
-    const currentToken = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('access_token='))
-      ?.split('=')[1] || token;
-    
-    // Usar siempre el token más reciente
-    const response = await axiosInstance.post('/accounts/auth/token/verify/', { 
-      token: currentToken 
-    });
-    return true;
-  } catch (error) {
-    return false;
+/**
+ * Centraliza el manejo de errores de autenticación de Axios.
+ * @param {Error} error El objeto de error capturado.
+ * @returns {string} Un mensaje de error descriptivo para el usuario.
+ */
+function handleAuthError(error) {
+  if (error.response) {
+    // El servidor respondió con un código de error (4xx, 5xx)
+    if (error.response.status === 401) {
+      return 'Credenciales incorrectas. Por favor, intenta nuevamente.';
+    }
+    // Otros errores del servidor (ej. 400, 500)
+    const detail = error.response.data?.detail;
+    return `Error del servidor: ${detail || error.response.statusText}`;
+  
+  } else if (error.request) {
+    // La petición se hizo pero no se recibió respuesta (ej. sin red)
+    return 'No se pudo conectar al servidor. Por favor, verifica tu conexión.';
+  
+  } else {
+    // Error al configurar la petición
+    return 'Ocurrió un error inesperado al preparar la solicitud.';
   }
 }
 
+/**
+ *  Valida el token de autenticación actual.  
+ * @returns {Promise<boolean>} Indica si el token es válido.  
+*/
+export async function validateToken() {
+  try {
+    // 1. Obtener el token de la fuente de verdad (tu helper de cookies)
+    const currentToken = getTokenFromCookie(); 
+
+    // 2. Si no hay token, no gastar una llamada de API
+    if (!currentToken) {
+      return false;
+    }
+    
+    // 3. Usar siempre el token más reciente
+    await axiosInstance.post('/accounts/auth/token/verify/', { 
+      token: currentToken 
+    });
+    
+    return true;
+
+  } catch (error) {
+    // Si la verificación falla (ej. 401), la API devuelve un error.
+    return false;
+  }
+}
+/**
+ * Inicia sesión con las credenciales proporcionadas y guarda los tokens en cookies.
+ * @param {*} credentials 
+ * @returns  {Promise<{success: boolean, token?: {access: string, refresh: string}, userData?: object, roles?: array, permissions?: object, message?: string}>}
+ */
 export async function loginUser(credentials) {
   try {
     const response = await axiosInstance.post('/accounts/auth/login/', credentials);
@@ -34,26 +72,24 @@ export async function loginUser(credentials) {
       roles,
       permissions
     };
+
   } catch (error) {
-    let errorMessage = 'Ocurrió un error inesperado.';
-    if (error.response) {
-      // Error con respuesta del servidor
-      if (error.response.status === 401) {
-        errorMessage = 'Credenciales incorrectas. Por favor, intenta nuevamente.';
-      } else {
-        errorMessage = `Error del servidor: ${error.response.data.detail || error.response.statusText}`;
-      }
-    } else if (error.request) {
-      // Error sin respuesta del servidor
-      errorMessage = 'No se pudo conectar al servidor. Por favor, verifica tu conexión.';
-    }
-    return { success: false, message: errorMessage };
+    // ¡MUCHO MÁS LIMPIO!
+    return { success: false, message: handleAuthError(error) };
   }
 }
 
-export async function login3User(credentials) {
+/**
+ * verifica las credenciales proporcionadas sin modificar el estado de autenticación.
+ * @param {*} credentials 
+ * @returns retorna {Promise<{success: boolean, token?: {access: string, refresh: string}, userData?: object, message?: string}>}
+ */
+export async function verifyCredentials(credentials) {
   try {
     const response = await axiosInstance.post('/accounts/auth/login/', credentials);
+    
+    // No llama a setAuthCookies (diferencia clave)
+
     return {
       success: true,
       token: {
@@ -61,21 +97,10 @@ export async function login3User(credentials) {
         refresh: response.data.refresh,
       },
       userData: response.data.user,
+      // No devuelve roles ni permisos (diferencia clave)
     };
   } catch (error) {
-    let errorMessage = 'Ocurrió un error inesperado.';
-    if (error.response) {
-      // Error con respuesta del servidor
-      if (error.response.status === 401) {
-        errorMessage = 'Credenciales incorrectas. Por favor, intenta nuevamente.';
-      } else {
-        errorMessage = `Error del servidor: ${error.response.data.detail || error.response.statusText}`;
-      }
-    } else if (error.request) {
-      // Error sin respuesta del servidor
-      errorMessage = 'No se pudo conectar al servidor. Por favor, verifica tu conexión.';
-    }
-    return { success: false, message: errorMessage };
+    // ¡MUCHO MÁS LIMPIO!
+    return { success: false, message: handleAuthError(error) };
   }
 }
-

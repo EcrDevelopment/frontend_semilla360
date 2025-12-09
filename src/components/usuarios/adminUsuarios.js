@@ -119,6 +119,9 @@ export default function UsersPage() {
                 dataSource={users}
                 columns={columns}
                 loading={loading}
+                
+                pagination={{ position: ['bottomLeft'], pageSize: 10 }}
+                scroll={{ x: 'max-content' }}
             />
 
             <Modal

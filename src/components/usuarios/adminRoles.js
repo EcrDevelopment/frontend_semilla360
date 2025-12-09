@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Table, Button, Modal, Form, Input, message, Space, Collapse, TreeSelect } from 'antd';
 import { fetchRoles, createRole, updateRole, deleteRole, fetchPermissions } from '../../api/Usuarios';
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 
-const { Panel } = Collapse;
+//const { Panel } = Collapse;
 
 export default function RolesPage() {
     const [roles, setRoles] = useState([]);
@@ -23,15 +24,15 @@ export default function RolesPage() {
 
     const groupPermissions = (permissions) => {
         const groups = {};
-    
+
         permissions.forEach(p => {
             const codenameParts = p.codename.split('.');
             const groupName = codenameParts.length > 1 ? codenameParts[0] : (p.content_type?.app_label || 'otros');
-    
+
             if (!groups[groupName]) groups[groupName] = [];
             groups[groupName].push(p);
         });
-    
+
         return groups;
     };
 
@@ -105,8 +106,8 @@ export default function RolesPage() {
             key: 'actions',
             render: (_, record) => (
                 <Space>
-                    <Button onClick={() => openModal(record)}>Editar</Button>
-                    <Button danger onClick={() => handleDelete(record.id)}>Borrar</Button>
+                    <Button onClick={() => openModal(record)}><EditOutlined /></Button>
+                    <Button danger onClick={() => handleDelete(record.id)}><DeleteOutlined /></Button>
                 </Space>
             )
         }
@@ -127,44 +128,57 @@ export default function RolesPage() {
 
     return (
         <>
-            <Button type="primary" onClick={() => openModal(null)} style={{ marginBottom: 16 }}>
-                Nuevo Rol
-            </Button>
-            <Table
-                rowKey="id"
-                dataSource={roles}
-                columns={columns}
-                loading={loading}
-            />
-            <Modal
-                open={modalVisible}
-                title={current ? "Editar Rol" : "Nuevo Rol"}
-                onCancel={() => setModalVisible(false)}
-                onOk={handleOk}
-                width={700}
-            >
-                <Form form={form} layout="vertical">
-                    <Form.Item
-                        name="name"
-                        label="Nombre del rol"
-                        rules={[{ required: true, message: "Nombre requerido" }]}
-                    >
-                        <Input />
-                    </Form.Item>
+            <div className="w-full h-full p-4 bg-gray-100">
+                
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold m-2">Roles</h2>
+                    <Button type="primary" onClick={() => openModal(null)} style={{ marginBottom: 16 }}>
+                        Nuevo Rol
+                    </Button>
+                </div>
+                <Table
+                    rowKey="id"
+                    dataSource={roles}
+                    columns={columns}
+                    loading={loading}
+                    pagination={{
+                        position: ["bottomLeft"],
+                        showSizeChanger: true,
+                        pageSizeOptions: ["10", "20", "50", "100"],     
+                      }}
+                    size='small'
+                    scroll={{ x: 'max-content' }}
+                />
+                <Modal
+                    open={modalVisible}
+                    title={current ? "Editar Rol" : "Nuevo Rol"}
+                    onCancel={() => setModalVisible(false)}
+                    onOk={handleOk}
+                    width={700}
+                >
+                    <Form form={form} layout="vertical">
+                        <Form.Item
+                            name="name"
+                            label="Nombre del rol"
+                            rules={[{ required: true, message: "Nombre requerido" }]}
+                        >
+                            <Input />
+                        </Form.Item>
 
-                    <Form.Item name="permissions" label="Permisos por módulo">
-                        <TreeSelect
-                            treeData={permissionTreeData}
-                            value={form.getFieldValue('permissions')}
-                            onChange={val => form.setFieldsValue({ permissions: val })}
-                            treeCheckable={true}
-                            showCheckedStrategy={TreeSelect.SHOW_CHILD}
-                            placeholder="Selecciona permisos"
-                            style={{ width: '100%' }}
-                        />
-                    </Form.Item>
-                </Form>
-            </Modal>
+                        <Form.Item name="permissions" label="Permisos por módulo">
+                            <TreeSelect
+                                treeData={permissionTreeData}
+                                value={form.getFieldValue('permissions')}
+                                onChange={val => form.setFieldsValue({ permissions: val })}
+                                treeCheckable={true}
+                                showCheckedStrategy={TreeSelect.SHOW_CHILD}
+                                placeholder="Selecciona permisos"
+                                style={{ width: '100%' }}
+                            />
+                        </Form.Item>
+                    </Form>
+                </Modal>
+            </div>
         </>
     );
 }

@@ -26,7 +26,7 @@ export default function FormularioDetalle({ despachoId, detalle, onGuardado }) {
   const calcularMerma = () => {
     const { peso_salida, peso_llegada } = form.getFieldsValue();
     if (peso_salida !== undefined && peso_llegada !== undefined) {
-      const merma = parseFloat(peso_salida) - parseFloat(peso_llegada);
+      const merma = parseFloat(peso_llegada) - parseFloat(peso_salida);
       form.setFieldsValue({ merma: merma.toFixed(2) });
     }
   };

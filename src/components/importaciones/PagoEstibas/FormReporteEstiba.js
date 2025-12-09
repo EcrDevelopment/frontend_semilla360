@@ -149,6 +149,7 @@ function ReporteEstiba() {
                     rowKey="id"
                     pagination={{ position: ['bottomLeft'], pageSize: 10 }}
                     loading={loading}
+                    scroll={{ x: 'max-content' }}
                 />
             </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback} from "react";
 import { useNavigate } from 'react-router-dom';
 import {
   Table,
@@ -9,17 +9,22 @@ import {
   Tooltip,
   Input,
   Space,
-  Select
+  Select,
+  Spin
 } from "antd";
 import {
   AiOutlineCalendar,
   AiOutlineShop,
   AiOutlineDownload,
   AiOutlineEye,
-  AiOutlineSnippets, // Importamos el icono de visualización
+  AiOutlineSnippets,
+  // Importamos el icono de visualización
 } from "react-icons/ai";
 import dayjs from 'dayjs';
-import { SearchOutlined } from "@ant-design/icons"; // Importamos el icono de búsqueda
+import {
+  SearchOutlined,
+  LoadingOutlined
+} from "@ant-design/icons"; // Importamos el icono de búsqueda
 
 // Asegúrate de que las rutas de importación sean correctas para tus funciones API
 import {
@@ -30,6 +35,8 @@ import {
   descargarDocumentosExpedienteUnificados,
   ActualizarOrdenCompraNotaIngreso,
 } from "../../../api/Documentos";
+
+import SenasaImporterModal from './SenasaImporter';
 
 
 const ListadoDeclaraciones = () => {
@@ -44,7 +51,35 @@ const ListadoDeclaraciones = () => {
   const [notaIngreso, setNotaIngreso] = useState(null);
   const [mes, setMes] = useState(dayjs().month() + 1); // dayjs().month() va de 0 a 11
   const [anio, setAnio] = useState(dayjs().year());
+  const [loading, setLoading] = useState(false);
+  const [isSenasaModalOpen, setIsSenasaModalOpen] = useState(false);
 
+
+  // Función para manejar el evento de teclado
+  // Usamos useCallback para que la función sea estable y no se recree en cada render
+  const handleKeyDown = useCallback((event) => {
+    // Verifica si la tecla es F4
+    if (event.key === 'F4') {
+      // Prevenir el comportamiento por defecto del navegador (a veces F4 abre la barra de direcciones)
+      event.preventDefault();
+
+      // Invertimos el estado actual (abre si está cerrado, cierra si está abierto)
+      setIsSenasaModalOpen((prev) => !prev);
+      console.log("F4 presionado: Alternando modal SENASA");
+    }
+  }, []);
+
+  // useEffect para añadir y quitar el "escuchador" de eventos al montar/desmontar
+  useEffect(() => {
+    // Agregamos el listener al objeto 'window' o 'document'
+    document.addEventListener('keydown', handleKeyDown);
+
+    // FUNCIÓN DE LIMPIEZA (CRUCIAL):
+    // Elimina el listener cuando el componente se desmonta para evitar fugas de memoria
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]); // Dependencia del useCallback
 
 
   const meses = [
@@ -75,12 +110,15 @@ const ListadoDeclaraciones = () => {
   }, []);
 
   const cargarDeclaraciones = async () => {
+    setLoading(true);
     try {
       const data = await listarArchivos();
       setDeclaraciones(data);
+      setLoading(false);
     } catch (error) {
       console.error("Error al cargar declaraciones:", error);
       message.error("Error al cargar las declaraciones.");
+      setLoading(false);
     }
   };
 
@@ -114,7 +152,7 @@ const ListadoDeclaraciones = () => {
 
   const handleAgregarOC = async () => {
     try {
-      await ActualizarOrdenCompraNotaIngreso(declSeleccionada.id, notaIngreso,ordenCompra);
+      await ActualizarOrdenCompraNotaIngreso(declSeleccionada.id, notaIngreso, ordenCompra);
       setModalOCvisible(false)
       setNotaIngreso('');
       setOrdenCmpra('');
@@ -323,16 +361,23 @@ const ListadoDeclaraciones = () => {
   return (
     <>
       <div className="w-full h-full p-4 bg-gray-100">
-        <h2 className="text-2xl font-bold m-2">Listado de Archivos de DUA:</h2>
+        <h2 className="text-2xl font-bold m-2">Archivos de DUA:</h2>
+        
         <Table
           columns={columns}
           dataSource={declaraciones}
+          loading={{
+            spinning: loading,
+            indicator: <Spin indicator={<LoadingOutlined spin />} size="large" />,
+          }}
           rowKey="id"
           pagination={{
             position: ["bottomLeft"],
             showSizeChanger: true,
-            pageSizeOptions: ["10", "20", "50", "100"],            
+            pageSizeOptions: ["10", "20", "50", "100"],
           }}
+          size="small"
+          scroll={{ x: 'max-content' }}
         />
         <Modal
           title={`Agregar año y mes fiscal a DUA: ${declSeleccionada?.numero_declaracion} - ${declSeleccionada?.anio_declaracion || ''}`}
@@ -419,6 +464,11 @@ const ListadoDeclaraciones = () => {
           </div>
         </Modal>
       </div>
+
+      <SenasaImporterModal
+        open={isSenasaModalOpen}
+        onClose={() => setIsSenasaModalOpen(false)}
+      />
     </>
   );
 };

@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import jwt_decode from 'jwt-decode';
-import { validateToken, loginUser } from '../api/Auth';
-import { setAuthCookies } from '../axiosConfig';
+import { loginUser } from '../api/Auth';
+import { setAuthCookies, getAccessTokenFromCookie, getRefreshTokenFromCookie, clearAuthCookies } from '../axiosConfig';
 
 const AuthContext = createContext();
 
@@ -15,43 +14,39 @@ export const AuthProvider = ({ children }) => {
   const idleTimeout = 900000; // 15 minutos
 
   const logout = useCallback(() => {
-    document.cookie = 'access_token=; Max-Age=0; path=/';
-    document.cookie = 'refresh_token=; Max-Age=0; path=/';
+    clearAuthCookies();
     localStorage.removeItem('user_data');
     localStorage.removeItem('roles');
     localStorage.removeItem('permissions');
+    localStorage.removeItem('lastActivity');
     setIsAuthenticated(false);
     setUser(null);
     setRoles([]);
     setPermissions({});
   }, []);
 
-  const checkAuth = useCallback(async () => {
-    const accessToken = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('access_token='))
-      ?.split('=')[1];
+  const checkAuth = useCallback(() => {
+    // 1. Carga síncrona desde el almacenamiento
+    const storedUser = JSON.parse(localStorage.getItem('user_data') || 'null');
+    const storedRoles = JSON.parse(localStorage.getItem('roles') || '[]');
+    const storedPermissions = JSON.parse(localStorage.getItem('permissions') || '{}');
 
-    if (accessToken) {
-      try {
-        const isValid = await validateToken(accessToken);
-        if (isValid) {
-          const storedUser = JSON.parse(localStorage.getItem('user_data') || 'null');
-          const storedRoles = JSON.parse(localStorage.getItem('roles') || '[]');
-          const storedPermissions = JSON.parse(localStorage.getItem('permissions') || '{}');
+    // 2. Comprueba si tenemos *algún* token de sesión
+    const accessToken = getAccessTokenFromCookie();
+    const refreshToken = getRefreshTokenFromCookie();
 
-          setIsAuthenticated(true);
-          setUser(storedUser);
-          setRoles(storedRoles);
-          setPermissions(storedPermissions);
-          return true;
-        }
-      } catch (error) {
-        console.error('Error en verificación de autenticación:', error);
-      }
+    // 3. Si tenemos datos Y al menos un token, confiamos en la sesión
+    if (storedUser && (accessToken || refreshToken)) {
+      setIsAuthenticated(true);
+      setUser(storedUser);
+      setRoles(storedRoles);
+      setPermissions(storedPermissions);
+      return true; // ¡Estamos autenticados (aparentemente)!
     }
+
+    // 4. Si no, no lo estamos
     return false;
-  }, [validateToken]);
+  }, []);
 
   // Manejo de tiempo de inactividad
   useEffect(() => {
@@ -78,17 +73,59 @@ export const AuthProvider = ({ children }) => {
     };
   }, [logout]);
 
+  // Inicialización de la autenticación al montar
   useEffect(() => {
-    const initAuth = async () => {
-      const isAuth = await checkAuth();
+    const initAuth = () => {
+      const isAuth = checkAuth();
       if (!isAuth) {
-        logout();
+        logout(); // Limpia cualquier resto (ej. solo localStorage pero no cookies)
       }
-      setIsLoading(false);
+      setIsLoading(false); // ¡Esto ahora es casi instantáneo!
     };
 
     initAuth();
   }, [checkAuth, logout]);
+
+  // Manejo global de errores de autenticación
+  useEffect(() => {
+    const handleAuthError = (e) => {
+      console.warn('Fallo de autenticación global detectado. Deslogueando...');
+      // Usamos el 'logout' del contexto para limpiar todo
+      logout();
+    };
+
+    window.addEventListener('auth-error', handleAuthError);
+
+    // Limpia el listener al desmontar
+    return () => {
+      window.removeEventListener('auth-error', handleAuthError);
+    };
+  }, [logout]);
+
+  // Sincronización de logout entre pestañas
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      // Si la 'key' que cambió es 'user_data' (o 'roles', o 'permissions')
+      // Y el nuevo valor es 'null' (lo que significa que se borró)
+      if (e.key === 'user_data' && e.newValue === null) {
+        // Este evento solo se dispara en las *otras* pestañas, no en la
+        // que originó el cambio.
+        console.log('Detectado logout en otra pestaña. Sincronizando...');
+
+        // Simplemente llamamos a logout() aquí también para limpiar
+        // el estado de React en *esta* pestaña.
+        logout();
+      }
+    };
+
+    // Añadimos el listener
+    window.addEventListener('storage', handleStorageChange);
+
+    // Limpiamos el listener
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [logout]); 
 
   const login = async (username, password) => {
     try {
@@ -106,7 +143,7 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
         setUser(userData);
         setRoles(userRoles);
-        setPermissions(userPermissions);        
+        setPermissions(userPermissions);
         return { success: true };
       } else {
         logout();

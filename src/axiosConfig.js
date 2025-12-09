@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const baseURL = 'http://127.0.0.1:8000/api';
+const baseURL = '/api';
 
 const axiosInstance = axios.create({
   baseURL,
@@ -11,23 +11,62 @@ const axiosInstance = axios.create({
 });
 
 
-let isRefreshing = false;
-let refreshSubscribers = [];
 
+// --- Helpers de Cookies ---
 
-const fetchCsrfToken = async () => {
+/**
+ * Función genérica para leer un valor de cookie específico.
+ * @param {string} cookieName El nombre de la cookie a leer.
+ * @returns {string|null} El valor de la cookie o null si no se encuentra.
+ */
+export const getTokenFromCookie = (cookieName) => {
+  const cookie = document.cookie
+    .split('; ')
+    .find(row => row.startsWith(`${cookieName}=`));
+  return cookie ? cookie.split('=')[1] : null;
+};
+
+/**
+ * Abstracción específica para obtener el token de acceso.
+ */
+export const getAccessTokenFromCookie = () => getTokenFromCookie('access_token');
+
+/**
+ * Abstracción específica para obtener el token de refresco.
+ */
+export const getRefreshTokenFromCookie = () => getTokenFromCookie('refresh_token');
+
+/**
+ * NOTA DE SEGURIDAD: Idealmente, el backend debería establecer estas cookies
+ * como HttpOnly. Al establecerlas con document.cookie, son vulnerables
+ * a ataques XSS si tu app tiene alguna vulnerabilidad.
+ */
+export const setAuthCookies = (access, refresh) => {
+  document.cookie = `access_token=${access}; path=/; max-age=900`; // 15 minutos
+  document.cookie = `refresh_token=${refresh}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 días
+};
+
+/**
+ * Limpia las cookies de autenticación.
+ */
+export const clearAuthCookies = () => {
+  document.cookie = 'access_token=; Max-Age=0; path=/';
+  document.cookie = 'refresh_token=; Max-Age=0; path=/';
+}
+
+/**
+ * Obtiene el token CSRF del backend.
+ * Debería ser llamado durante la inicialización de la app.
+ */
+export const fetchCsrfToken = async () => {
   try {
-    const response = await axios.get(`${baseURL}/accounts/get-csrf-token/`, {
-      withCredentials: true, // Incluye las cookies en la solicitud
-    });
+    const response = await axiosInstance.get('/accounts/get-csrf-token/');
+    const csrfToken = response.data.csrf_Token;
 
-    const csrfToken = response.data.csrf_Token;    
-
-    // Opcional: Almacena el token CSRF en las cookies manualmente (si no se hace automáticamente)
     if (csrfToken) {
+      // Django espera el token CSRF en una cookie 'csrftoken'
       document.cookie = `csrftoken=${csrfToken}; path=/; max-age=3600`; // 1 hora
     }
-
     return csrfToken;
   } catch (error) {
     console.error('Error fetching CSRF token:', error);
@@ -35,30 +74,14 @@ const fetchCsrfToken = async () => {
   }
 };
 
-(async () => {
-  const csrfToken = await fetchCsrfToken();
-  if (csrfToken) {
-    
-  } else {
-    console.error('No se pudo inicializar el Token CSRF');
-  }
-})();
+// --- Lógica de Refresh (Tu código es excelente) ---
+
+let isRefreshing = false;
+let refreshSubscribers = [];
 
 const notifySubscribers = (token) => {
   refreshSubscribers.forEach((callback) => callback(token));
   refreshSubscribers = [];
-};
-
-const getTokenFromCookie = (cookieName) => {
-  const cookie = document.cookie
-    .split('; ')
-    .find(row => row.startsWith(`${cookieName}=`));
-  return cookie ? cookie.split('=')[1] : null;
-};
-
-export const setAuthCookies = (access, refresh) => {
-  document.cookie = `access_token=${access}; path=/; max-age=900`; // 15 minutos
-  document.cookie = `refresh_token=${refresh}; path=/; max-age=${7 * 24 * 60 * 60}`; // 24 horas
 };
 
 const refreshAuthToken = async () => {
@@ -68,28 +91,27 @@ const refreshAuthToken = async () => {
     });
   }
 
-  const refreshTokenCookie = getTokenFromCookie('refresh_token');
+  const refreshTokenCookie = getRefreshTokenFromCookie(); // Usando el nuevo helper
   if (!refreshTokenCookie) {
     throw new Error('No refresh token available');
   }
 
   isRefreshing = true;
-  //console.log('Iniciando refresh de token...');
 
   try {
-    const response = await axios.post(`${baseURL}/accounts/auth/token/refresh/`, { refresh: refreshTokenCookie }, { withCredentials: true });
+    const response = await axiosInstance.post(`/accounts/auth/token/refresh/`, { refresh: refreshTokenCookie });
     const newToken = response.data.access;
     const newRefreshToken = response.data.refresh;
-    //console.log('Nuevo Token generado:', newToken);
 
-    // Actualizar las cookies con el nuevo token
-    setAuthCookies(newToken, newRefreshToken);
-    //console.log('Cookies actualizadas');
+    setAuthCookies(newToken, newRefreshToken); // Actualiza ambas cookies
 
     notifySubscribers(newToken);
     return newToken;
   } catch (error) {
-    //console.error('Error en refresh de token:', error);
+    // Si el refresh falla, disparamos el evento para desloguear
+    window.dispatchEvent(
+      new CustomEvent('auth-error', { detail: { message: 'Token refresh failed' } })
+    );
     throw error;
   } finally {
     isRefreshing = false;
@@ -97,63 +119,92 @@ const refreshAuthToken = async () => {
 };
 
 
+// --- Interceptores ---
 
-// Request interceptor
+/**
+ * INTERCEPTOR DE PETICIÓN (REQUEST)
+ * * Tareas:
+ * 1. Añade el 'Authorization' Bearer token a todas las peticiones.
+ * 2. Añade el 'X-CSRFToken' a peticiones de mutación (POST, PUT, etc.)
+ */
 axiosInstance.interceptors.request.use((config) => {
-  const token = getTokenFromCookie('access_token');  
+  const token = getAccessTokenFromCookie(); // Usando helper
+  const csrfToken = getTokenFromCookie('csrftoken'); // Cookie de Django/DRF
+
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;    
-  }  
-  
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  // ¡ESTA ES LA PARTE QUE FALTABA!
+  // Añade CSRF a métodos "inseguros"
+  const unsafeMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  if (csrfToken && unsafeMethods.includes(config.method.toUpperCase())) {
+    config.headers['X-CSRFToken'] = csrfToken;
+  }
+
   return config;
 });
 
+// Rutas públicas que no deben disparar un refresh de token
+const publicEndpoints = [
+  '/accounts/auth/login/',
+  '/accounts/auth/password/reset/',
+  '/accounts/auth/password/reset/confirm/',
+  '/accounts/auth/token/verify/',
+  '/accounts/get-csrf-token/',
+];
+
+/**
+ * INTERCEPTOR DE RESPUESTA (RESPONSE)
+ * * Tareas:
+ * 1. Si la respuesta es 401 (expirado) y no es una ruta pública:
+ * 2. Intenta renovar el token usando refreshAuthToken.
+ * 3. Reintenta la petición original con el nuevo token.
+ * 4. Si el refresh falla, emite 'auth-error' para desloguear.
+ */
 axiosInstance.interceptors.response.use(
-  (response) => response, // Responder normalmente si no hay errores
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Verificar si es el endpoint de login
-    if (originalRequest.url === '/accounts/auth/login/') {
-      // Devolver el error directamente sin intentar renovar tokens
+    // Evita interferir con rutas públicas
+    if (publicEndpoints.some(endpoint => originalRequest.url.includes(endpoint))) {
       return Promise.reject(error);
     }
 
-    // Si el error es 401 y la solicitud no ha sido marcada para reintentar
+    // Si es 401 y no se ha reintentado
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
         const newToken = await refreshAuthToken();
 
-        // Actualizamos solo el header de Authorization con el nuevo token
+        // Actualiza el header
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
 
-        // Actualizamos el token dentro del cuerpo si existe
+        // NOTA: Este bloque es para APIs (como /token/verify/) que
+        // envían el token en el *cuerpo* de la petición.
+        // Si solo usas el header, podrías quitar este bloque.
         if (typeof originalRequest.data === 'string') {
           const parsedData = JSON.parse(originalRequest.data);
-          parsedData.token = newToken;
-          originalRequest.data = JSON.stringify(parsedData);
-        } else if (typeof originalRequest.data === 'object' && originalRequest.data !== null) {
+          if (parsedData.token) {
+            parsedData.token = newToken;
+            originalRequest.data = JSON.stringify(parsedData);
+          }
+        } else if (typeof originalRequest.data === 'object' && originalRequest.data?.token) {
           originalRequest.data.token = newToken;
-        } else {
-          originalRequest.data = JSON.stringify({ token: newToken });
         }
 
-        // Reintentar la solicitud original con el nuevo token
-        return axios(originalRequest);
+        // Reintenta la solicitud original
+        return axiosInstance(originalRequest); // Usa axiosInstance para re-aplicar interceptores
+
       } catch (refreshError) {
-        // Emitir un evento para notificar que la renovación del token falló
-        window.dispatchEvent(
-          new CustomEvent('auth-error', {
-            detail: { message: 'Token refresh failed' },
-          })
-        );
+        // El refresh falló, el evento 'auth-error' ya se disparó
+        // en refreshAuthToken()
         return Promise.reject(refreshError);
       }
     }
 
-    // Devolver otros errores
     return Promise.reject(error);
   }
 );

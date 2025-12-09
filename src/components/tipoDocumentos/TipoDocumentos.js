@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
-  Table, Button, Modal, Form, Input, Popconfirm, message
+  Table, Button, Modal, Form, Input, Popconfirm, message,Spin
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  LoadingOutlined
 } from '@ant-design/icons';
 import {
   getTipoDocumentos,
@@ -117,7 +118,17 @@ export default function TipoDocumentos() {
         columns={columns}
         dataSource={data}
         rowKey="id"
-        loading={loading}
+        loading={{
+                    spinning: loading,
+                    indicator: <Spin indicator={<LoadingOutlined spin />} size="large" />,
+                  }}
+        scroll={{ x: 'max-content' }}
+        pagination={{
+            position: ["bottomLeft"],
+            showSizeChanger: true,
+            pageSizeOptions: ["10", "20", "50", "100"],
+          }}
+        size='small'
       />
 
       <Modal

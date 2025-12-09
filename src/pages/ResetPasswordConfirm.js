@@ -1,146 +1,195 @@
 // ResetPasswordConfirm.js
-import React, { useState } from 'react';
-import { useLocation, Link } from 'react-router-dom';
-import axiosInstance from '../axiosConfig';
+import React, { useState } from "react";
+import { useLocation, Link } from "react-router-dom";
+import axiosInstance from "../axiosConfig";
+import {
+  Button,
+  Form,
+  Grid,
+  Input,
+  theme,
+  Typography,
+  Avatar,
+  Spin,
+} from "antd";
+import { LockOutlined, LoadingOutlined } from "@ant-design/icons";
 
+const { useToken } = theme;
+const { useBreakpoint } = Grid;
+const { Text, Title } = Typography;
 
 const ResetPasswordConfirm = () => {
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [message, setMessage] = useState('');
-    const [error, setError] = useState([]);
-    const [loading, setLoading] = useState(false);
+  const { token } = useToken();
+  const screens = useBreakpoint();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState([]);
+  const [message, setMessage] = useState("");
 
-    const location = useLocation();
-    const query = new URLSearchParams(location.search);
-    const token = query.get('token');
-    const userId = query.get('user');
-    
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
+  const location = useLocation();
+  const query = new URLSearchParams(location.search);
+  const resetToken = query.get("token");
+  const userId = query.get("user");
 
-        if (password !== confirmPassword) {
-            setError(['Las contraseñas no coinciden.']);
-            setLoading(false);
-            return;
+  const handleSubmit = async (values) => {
+    setLoading(true);
+    setError([]);
+    setMessage("");
+
+    if (values.password !== values.confirmPassword) {
+      setError(["Las contraseñas no coinciden."]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.post(
+        "/accounts/auth/password-reset-confirm/",
+        {
+          token: resetToken,
+          user_id: userId,
+          new_password: values.password,
         }
+      );
 
-        try {
-            const response = await axiosInstance.post('/accounts/auth/password-reset-confirm/', {
-                token,
-                user_id: userId,
-                new_password: password,
-            });
-            setMessage(response.data.message);
-            setPassword('');
-            setConfirmPassword('');
-            setError([]);
-        }catch (err) {
-            setMessage('');
-            console.error('Error en la solicitud:', err); // Mostrar el error en la consola
-        
-            const errors = err.response?.data || {}; // Si no hay respuesta, usa un objeto vacío
-            let errorMessages = [];
-        
-            // Verifica si hay un error de tipo non_field_errors
-            if (errors.non_field_errors) {
-                errorMessages = errors.non_field_errors; // Solo usa el mensaje de non_field_errors
-            } else {
-                // Manejo de errores de campos específicos
-                for (const key in errors) {
-                    if (Array.isArray(errors[key])) {
-                        errorMessages = errorMessages.concat(errors[key].map(msg => `${key}: ${msg}`));
-                    } else {
-                        errorMessages.push(`${key}: ${errors[key]}`);
-                    }
-                }
-            }
-        
-            if (errorMessages.length === 0) {
-                errorMessages.push('Ha ocurrido un error inesperado.'); // Mensaje genérico si no hay otros errores
-            }
-        
-            setError(errorMessages); // Asegúrate de que `errorMessages` sea siempre un array
-        }finally {
-            setLoading(false); // Desactiva el estado de cargador
+      setMessage(response.data.message);
+      form.resetFields();
+    } catch (err) {
+      console.error("Error en la solicitud:", err);
+      const errors = err.response?.data || {};
+      let errorMessages = [];
+
+      if (errors.non_field_errors) {
+        errorMessages = errors.non_field_errors;
+      } else {
+        for (const key in errors) {
+          if (Array.isArray(errors[key])) {
+            errorMessages = errorMessages.concat(
+              errors[key].map((msg) => `${key}: ${msg}`)
+            );
+          } else {
+            errorMessages.push(`${key}: ${errors[key]}`);
+          }
         }
-    };
+      }
 
-    return (
-        <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
-            <div className="relative py-3 sm:max-w-xl sm:mx-auto">
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-sky-500 shadow-lg transform -skew-y-6 sm:skew-y-0 sm:-rotate-6 sm:rounded-3xl"></div>
-                <div className="relative px-4 py-10 bg-white shadow-lg sm:rounded-3xl sm:p-20">
-                    <div className="max-w-md mx-auto">
-                        <div>
-                            <h1 className="text-2xl font-semibold text-center">Restablecer Contraseña</h1>
-                            <form onSubmit={handleSubmit}>
-                                <div className="divide-y divide-gray-200">
-                                    <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
-                                        <div className="relative">
-                                            <input
-                                                type="password"
-                                                placeholder="Nueva contraseña"
-                                                id="password1"
-                                                name="password1"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                required
-                                                className="peer placeholder-transparent h-10 w-full border-b-2 border-gray-300 text-gray-900 focus:outline-none focus:border-rose-600"
-                                            />
-                                            <label htmlFor="password1" className="absolute left-0 -top-3.5 text-gray-600 text-sm peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-440 peer-placeholder-shown:top-2 transition-all peer-focus:-top-3.5 peer-focus:text-gray-600 peer-focus:text-sm">Nueva contraseña</label>
-                                        </div>
-                                        <div className="relative">
-                                            <input
-                                                type="password"
-                                                placeholder="Confirmar contraseña"
-                                                id="password2"
-                                                name="password2"
-                                                value={confirmPassword}
-                                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                                required
-                                                className="peer placeholder-transparent h-10 w-full border-b-2 border-gray-300 text-gray-900 focus:outline-none focus:border-rose-600"
-                                            />
-                                            <label htmlFor="password2" className="absolute left-0 -top-3.5 text-gray-600 text-sm peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-440 peer-placeholder-shown:top-2 transition-all peer-focus:-top-3.5 peer-focus:text-gray-600 peer-focus:text-sm">Confirmar contraseña</label>
-                                        </div>
-                                        <div className='w-full'>
-                                            {message && <p className='text-green-500 text-sm'>{message}</p>}
-                                            {(error || []).map((errMsg, index) => (
-                                                <p className='text-red-500 text-sm' key={index}>{errMsg}</p>
-                                            ))}
-                                        </div>
-                                        <div className="w-full m-auto p-3 flex flex-row justify-center">
-                                            <button
-                                                type="submit"
-                                                className={`bg-cyan-500 hover:bg-cyan-700 text-white p-2 rounded-md font-semibold ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                disabled={loading}
-                                            >
-                                                {loading ? (
-                                                    <span className="flex justify-center items-center">
-                                                        <svg className="animate-spin h-5 w-5 mr-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                                                        </svg>
-                                                        Cargando...
-                                                    </span>
-                                                ) : (
-                                                    'Restablecer Contraseña'
-                                                )}
-                                            </button>
-                                        </div>
-                                        <div className="mb-6 text-cyan-500 text-center">
-                                            <Link to="/login" className="hover:underline">¿Deseas volver?</Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
+      if (errorMessages.length === 0) {
+        errorMessages.push("Ha ocurrido un error inesperado.");
+      }
+
+      setError(errorMessages);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const styles = {
+    container: {
+      margin: "0 auto",
+      padding: screens.md
+        ? `${token.paddingXL}px`
+        : `${token.sizeXXL}px ${token.padding}px`,
+      width: "380px",
+    },
+    footer: {
+      marginTop: token.marginLG,
+      textAlign: "center",
+      width: "100%",
+    },
+    header: {
+      marginBottom: token.marginXL,
+    },
+    section: {
+      alignItems: "center",
+      backgroundColor: token.colorBgContainer,
+      display: "flex",
+      height: screens.sm ? "100vh" : "auto",
+      padding: screens.md ? `${token.sizeXXL}px 0px` : "0px",
+    },
+    text: {
+      color: token.colorTextSecondary,
+    },
+    title: {
+      fontSize: screens.md ? token.fontSizeHeading2 : token.fontSizeHeading3,
+    },
+  };
+
+  return (
+    <section style={styles.section}>
+      <div style={styles.container}>
+        <div style={styles.header}>
+          <Avatar src={"/Logo_Semilla_Icono.png"} size={60} shape="square" />
+          <Title style={styles.title}>Restablecer contraseña</Title>
+          <Text style={styles.text}>
+            Ingresa tu nueva contraseña para tu cuenta.
+          </Text>
         </div>
-    );
+
+        <Form
+          form={form}
+          onFinish={handleSubmit}
+          layout="vertical"
+          requiredMark="optional"
+        >
+          <Form.Item
+            name="password"
+            rules={[
+              { required: true, message: "Por favor ingresa tu nueva contraseña!" },
+            ]}
+          >
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="Nueva contraseña"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="confirmPassword"
+            rules={[
+              { required: true, message: "Por favor confirma tu contraseña!" },
+            ]}
+          >
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="Confirmar contraseña"
+            />
+          </Form.Item>
+
+          {message && (
+            <div className="text-green-600 my-3 text-xs">{message}</div>
+          )}
+          {error.length > 0 &&
+            error.map((errMsg, index) => (
+              <div key={index} className="text-red-500 my-1 text-xs">
+                {errMsg}
+              </div>
+            ))}
+
+          <Form.Item style={{ marginBottom: "0px" }}>
+            <Button block type="primary" htmlType="submit" disabled={loading}>
+              {loading ? (
+                <span className="flex justify-center items-center">
+                  <Spin indicator={<LoadingOutlined spin />} size="small" />
+                  Guardando...
+                </span>
+              ) : (
+                "Restablecer contraseña"
+              )}
+            </Button>
+          </Form.Item>
+        </Form>
+
+        <div style={styles.footer}>
+          <Text style={styles.text}>
+            ¿Deseas volver?{" "}
+            <Link to="/login" className="hover:underline">
+              Inicia sesión
+            </Link>
+          </Text>
+        </div>
+      </div>
+    </section>
+  );
 };
 
 export default ResetPasswordConfirm;

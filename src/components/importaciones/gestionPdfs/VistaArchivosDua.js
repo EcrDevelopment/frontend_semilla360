@@ -18,15 +18,16 @@ import {
     Modal,
     Card,
     Tooltip,
-    Tag
+    Tag,
+    Splitter,
+    Grid,
+    Flex
 } from 'antd';
 import {
     FilePdfOutlined,
     ZoomInOutlined,
     ZoomOutOutlined,
     LoadingOutlined,
-    MenuUnfoldOutlined,
-    MenuFoldOutlined,
     DeleteOutlined,
     SaveOutlined,
 } from '@ant-design/icons';
@@ -34,7 +35,8 @@ import { Document, Page, pdfjs } from 'react-pdf';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
-const { Sider, Content } = Layout;
+const { Content } = Layout;
+const { useBreakpoint } = Grid;
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
@@ -51,7 +53,10 @@ const VistaArchivoDua = () => {
     const [expedienteActualId, setExpedienteActualId] = useState(null);
     const [savingFolio, setSavingFolio] = useState(false);
     const [activeCollapseKey, setActiveCollapseKey] = useState(null);
-    const [siderCollapsed, setSiderCollapsed] = useState(false);
+    //const [siderCollapsed, setSiderCollapsed] = useState(false);
+    const screens = useBreakpoint();
+    const isMobile = !screens.md; // < 768px
+    const splitDirection = isMobile ? "horizontal" : "vertical";
 
     const inputRef = useRef(null);
     const visorRef = useRef(null);
@@ -195,175 +200,193 @@ const VistaArchivoDua = () => {
         }
     };
 
-    return (
-        <Layout style={{ height: '100vh' }}>
-            <div style={{ position: 'relative' }}>
-                {/* Botón visible siempre, ahora abajo a la izquierda */}
-                <div
-                    style={{
-                        position: 'absolute',
-                        bottom: 16,
-                        left: siderCollapsed ? 0 : 300,
-                        zIndex: 1000,
-                        transition: 'left 0.3s ease',
-                    }}
-                >
-                    <Button
-                        type="default"
-                        icon={siderCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                        onClick={() => setSiderCollapsed(!siderCollapsed)}
-                        style={{
-                            padding: '8px 16px',
-                            fontSize: '16px',
-                            borderRadius: '8px',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                        }}
-                        className='border-2 border-blue-500'
-                    />
-                </div>
 
-                <Sider
-                    width={300}
-                    collapsed={siderCollapsed}
-                    collapsedWidth={0}
-                    onCollapse={setSiderCollapsed}
-                    theme="light"
-                    className="border-r bg-white overflow-y-auto transition-all duration-300"
-                    style={{ height: '100vh', position: 'relative' }}
-                >
-                    <div className="p-4 pt-4">
-                        <Title level={5}>Archivo de DUA: {numero}-{anio}</Title>
-                        <Collapse
-                            accordion
-                            activeKey={activeCollapseKey}
-                            onChange={(key) => setActiveCollapseKey(key)}
-                        >
-                            {Object.entries(documentosAgrupados).map(([tipo, documentos]) => (
-                                <Panel header={`${tipo} (${documentos.length})`} key={tipo}>
-                                    {documentos.map((doc) => {
-                                        const isSelected = doc.documento_id === documentoActualId;
-                                        return (
-                                            <Card
-                                                key={doc.id}
-                                                size="small"
-                                                className={`mb-2 p-2 transition-shadow cursor-pointer ${isSelected ? 'shadow-md border border-blue-500' : 'hover:shadow'} rounded-lg`}
-                                                onClick={() => handleSeleccionarDocumento(doc.documento_id, doc.id)}
-                                            >
-                                                <div className="flex justify-between items-center gap-2">
-                                                    {/* Sección del ícono y texto */}
-                                                    <div className="flex flex-col overflow-hidden">
-                                                        <div className="flex items-center gap-2">
-                                                            <FilePdfOutlined className="text-red-500 text-lg shrink-0" />
-                                                            {/* Nombre truncado con tooltip */}
-                                                            <Tooltip title={doc.nombre_original}>
-                                                                <Text
-                                                                    className="truncate max-w-[180px] text-sm font-medium"
-                                                                    ellipsis
-                                                                >
-                                                                    {doc.nombre_original}
-                                                                </Text>
-                                                            </Tooltip>
-                                                        </div>
-                                                        <div className="flex gap-2 mt-1 flex-wrap">
-                                                            {doc.nota_ingreso && (
-                                                                <Tag color="green" className="text-xs">
-                                                                    NI: {doc.nota_ingreso}
-                                                                </Tag>
-                                                            )}
-                                                            {doc.orden_compra && (
-                                                                <Tag color="orange" className="text-xs">
-                                                                    OC: {doc.orden_compra}
-                                                                </Tag>
-                                                            )}
-                                                        </div>
-                                                        <Text type="secondary" className="text-xs mt-1 truncate max-w-[180px]">
-                                                            {doc.usuario}
-                                                        </Text>
-                                                    </div>
-
-                                                    {/* Botón eliminar con ícono */}
-                                                    <Popconfirm
-                                                        title="¿Eliminar documento?"
-                                                        onConfirm={(e) => {
-                                                            e.stopPropagation();
-                                                            handleEliminarDocumento(doc.id);
-                                                        }}
-                                                        onCancel={(e) => e.stopPropagation()}
-                                                        okText="Sí"
-                                                        cancelText="No"
-                                                    >
-                                                        <Button
-                                                            danger
-                                                            shape="circle"
-                                                            icon={<DeleteOutlined />}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        />
-                                                    </Popconfirm>
-                                                </div>
-                                            </Card>
-                                        );
-                                    })}
-                                </Panel>
-                            ))}
-                        </Collapse>
-                    </div>
-                </Sider>
-            </div>
-            <Layout>
-                <Content ref={visorRef} className="p-2 overflow-y-auto">
-                    {loading ? (
-                        <Spin />
-                    ) : selectedDocBlobUrl ? (
+    const sidebarContent = (
+        <div className="p-4 pt-4">
+            <Title level={5}>Archivo de DUA: {numero}-{anio}</Title>
+            <Collapse
+                accordion
+                activeKey={activeCollapseKey}
+                onChange={(key) => setActiveCollapseKey(key)}
+                items={Object.entries(documentosAgrupados).map(([tipo, documentos]) => ({
+                    key: tipo,
+                    label: `${tipo} (${documentos.length})`,
+                    children: (
                         <>
-                            <div className="sticky top-0 z-10 bg-gray-300/35 rounded-md p-2 border-b mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-wrap">
-                                {/* Controles de Zoom */}
-                                <div className="flex gap-2 items-center flex-shrink-0">
-                                    <Button icon={<ZoomOutOutlined />} onClick={() => setZoomLevel(z => Math.max(z - 0.1, 0.5))} />
-                                    <Button icon={<ZoomInOutlined />} onClick={() => setZoomLevel(z => Math.min(z + 0.1, 3))} />
-                                    <span className="text-sm text-gray-700 whitespace-nowrap">Zoom: {(zoomLevel * 100).toFixed(0)}%</span>
-                                </div>
-
-                                {/* Campo de Folio y Botón */}
-                                <div className="flex gap-2 items-center flex-shrink-0">
-                                    <input
-                                        ref={inputRef}
-                                        type="text"
-                                        value={folio}
-                                        onChange={(e) => setFolio(e.target.value)}
-                                        onKeyDown={async (e) => {
-                                            if (e.key === 'Enter' && folio.trim()) await guardarFolio();
-                                        }}
-                                        placeholder="Ingrese folio"
-                                        className="border border-gray-300 px-3 py-1.5 rounded-md w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                    <Button
-                                        type="primary"
-                                        disabled={!folio.trim()}
-                                        onClick={guardarFolio}
-                                        className="whitespace-nowrap"
+                            {documentos.map((doc) => {
+                                const isSelected = doc.documento_id === documentoActualId;
+                                return (
+                                    <Card
+                                        key={doc.id}
+                                        size="small"
+                                        className={`mb-2 p-2 transition-shadow cursor-pointer ${isSelected ? 'shadow-md border border-blue-500' : 'hover:shadow'} rounded-lg`}
+                                        onClick={() => handleSeleccionarDocumento(doc.documento_id, doc.id)}
                                     >
-                                        {savingFolio ? <LoadingOutlined /> : <SaveOutlined />}
-                                    </Button>
-                                </div>
-                            </div>
+                                        <div className="flex justify-between items-center gap-2">
+                                            {/* Sección del ícono y texto */}
+                                            <div className="flex flex-col overflow-hidden">
+                                                <div className="flex items-center gap-2">
+                                                    <FilePdfOutlined className="text-red-500 text-lg shrink-0" />
+                                                    {/* Nombre truncado con tooltip */}
+                                                    <Tooltip title={doc.nombre_original}>
+                                                        <Text
+                                                            className="truncate max-w-[180px] text-sm font-medium"
+                                                            ellipsis
+                                                        >
+                                                            {doc.nombre_original}
+                                                        </Text>
+                                                    </Tooltip>
+                                                </div>
+                                                <div className="flex gap-2 mt-1 flex-wrap">
+                                                    {doc.nota_ingreso && (
+                                                        <Tag color="green" className="text-xs">
+                                                            NI: {doc.nota_ingreso}
+                                                        </Tag>
+                                                    )}
+                                                    {doc.orden_compra && (
+                                                        <Tag color="orange" className="text-xs">
+                                                            OC: {doc.orden_compra}
+                                                        </Tag>
+                                                    )}
+                                                </div>
+                                                <Text type="secondary" className="text-xs mt-1 truncate max-w-[180px]">
+                                                    {doc.usuario}
+                                                </Text>
+                                            </div>
 
-                            <div className="flex justify-center">
-                                <div className="w-fit">
-                                    <Document file={selectedDocBlobUrl} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
-                                        {Array.from(new Array(numPages), (_, index) => (
-                                            <Page key={index + 1} pageNumber={index + 1} scale={zoomLevel} />
-                                        ))}
-                                    </Document>
-                                </div>
-                            </div>
-
+                                            {/* Botón eliminar con ícono */}
+                                            <Popconfirm
+                                                title="¿Eliminar documento?"
+                                                onConfirm={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEliminarDocumento(doc.id);
+                                                }}
+                                                onCancel={(e) => e.stopPropagation()}
+                                                okText="Sí"
+                                                cancelText="No"
+                                            >
+                                                <Button
+                                                    danger
+                                                    shape="circle"
+                                                    icon={<DeleteOutlined />}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </Popconfirm>
+                                        </div>
+                                    </Card>
+                                );
+                            })}
                         </>
-                    ) : (
-                        <Empty description="Selecciona un documento para visualizarlo" />
-                    )}
-                </Content>
-            </Layout>
-        </Layout>
+                    ),
+                }))}
+            >
+
+
+            </Collapse>
+        </div>
+
+    );
+
+    const visorContent = (
+        <Content ref={visorRef} className="p-2 h-full overflow-y-auto">
+            {loading ? (
+                <Spin indicator={<LoadingOutlined spin />} size="large" fullscreen />
+            ) : selectedDocBlobUrl ? (
+                <>
+                    <div className="sticky top-0 z-10 bg-gray-300/35 rounded-md p-2 border-b mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-wrap">
+                        {/* Controles de Zoom */}
+                        <div className="flex gap-2 items-center flex-shrink-0">
+                            <Button icon={<ZoomOutOutlined />} onClick={() => setZoomLevel(z => Math.max(z - 0.1, 0.5))} />
+                            <Button icon={<ZoomInOutlined />} onClick={() => setZoomLevel(z => Math.min(z + 0.1, 3))} />
+                            <span className="text-sm text-gray-700 whitespace-nowrap">Zoom: {(zoomLevel * 100).toFixed(0)}%</span>
+                        </div>
+
+                        {/* Campo de Folio y Botón */}
+                        <div className="flex gap-2 items-center flex-shrink-0">
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={folio}
+                                onChange={(e) => setFolio(e.target.value)}
+                                onKeyDown={async (e) => {
+                                    if (e.key === 'Enter' && folio.trim()) await guardarFolio();
+                                }}
+                                placeholder="Ingrese folio"
+                                className="border border-gray-300 px-3 py-1.5 rounded-md w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <Button
+                                type="primary"
+                                disabled={!folio.trim()}
+                                onClick={guardarFolio}
+                                className="whitespace-nowrap"
+                            >
+                                {savingFolio ? <LoadingOutlined /> : <SaveOutlined />}
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-center">
+                        <div className="w-fit">
+                            <Document file={selectedDocBlobUrl} onLoadSuccess={({ numPages }) => setNumPages(numPages)}>
+                                {Array.from(new Array(numPages), (_, index) => (
+                                    <Page key={index + 1} pageNumber={index + 1} scale={zoomLevel} />
+                                ))}
+                            </Document>
+                        </div>
+                    </div>
+
+                </>
+            ) : (
+                <Empty description="Selecciona un documento para visualizarlo" className='my-auto' />
+            )}
+        </Content>
+    );
+
+    return (
+        <Flex style={{ height: "100vh" }} vertical={isMobile}>
+            {isMobile ? (
+                <Splitter                    
+                    style={{ height: "100vh", width: "100%" }}
+                    layout="vertical"
+                >
+                    {/* Panel izquierdo (antes Sidebar) */}
+                    <Splitter.Panel
+                        min="20%"
+                        max="30%"
+                        defaultSize="25%"
+                        collapsible={{ start: true, end: true, showCollapsibleIcon: true }}                        
+                    >
+                        {sidebarContent}
+                    </Splitter.Panel>
+
+                    {/* Panel derecho (antes Content) */}
+                    <Splitter.Panel>
+                        {visorContent}
+                    </Splitter.Panel>
+                </Splitter>) : (
+                <Splitter
+                    split={splitDirection}
+                    style={{ height: "100vh", width: "100%" }}
+
+                >
+                    {/* Panel izquierdo (antes Sidebar) */}
+                    <Splitter.Panel
+                        min="20%"
+                        max="30%"
+                        defaultSize="25%"
+                        collapsible={{ start: true, end: true, showCollapsibleIcon: true }}
+                    >
+                        {sidebarContent}
+                    </Splitter.Panel>
+
+                    {/* Panel derecho (antes Content) */}
+                    <Splitter.Panel>
+                        {visorContent}
+                    </Splitter.Panel>
+                </Splitter>
+            )
+            }
+        </Flex>
     );
 };
 

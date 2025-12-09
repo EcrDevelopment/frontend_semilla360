@@ -2,8 +2,8 @@ import React from "react";
 import { Table, Button, Space } from "antd";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 
-const UserTable = ({ users, loading, openModal, handleDelete, roleMap ,}) => {
-   const columns = [
+const UserTable = ({ users, loading, openModal, handleDelete, roleMap, }) => {
+  const columns = [
     { title: "ID", dataIndex: "id" },
     { title: "Usuario", dataIndex: "username" },
     { title: "Email", dataIndex: "email" },
@@ -36,13 +36,16 @@ const UserTable = ({ users, loading, openModal, handleDelete, roleMap ,}) => {
 
   return (
     <>
-      <Button
-        type="primary"
-        onClick={() => openModal(null)}
-        style={{ marginBottom: 16 }}
-      >
-        Nuevo Usuario
-      </Button>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold m-2">Usuarios</h2>
+        <Button
+          type="primary"
+          onClick={() => openModal(null)}
+        >
+          Nuevo Usuario
+        </Button>
+      </div>
+
       <Table
         rowKey="id"
         dataSource={users}
@@ -52,8 +55,9 @@ const UserTable = ({ users, loading, openModal, handleDelete, roleMap ,}) => {
           position: ["bottomLeft"],
           showSizeChanger: true,
           pageSizeOptions: ["10", "20", "50", "100"],
-          current: 1,          
         }}
+        scroll={{ x: 'max-content' }}
+        size="small"
       />
     </>
   );

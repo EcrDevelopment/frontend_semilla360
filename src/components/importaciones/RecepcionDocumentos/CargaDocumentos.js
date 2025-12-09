@@ -164,168 +164,178 @@ const RecepcionDocumentos = () => {
   };
 
   return (
-    <div className="w-full md:w-2/3 mx-auto mt-10 p-6 bg-white shadow rounded-lg">
+    <div className="w-full md:w-2/3 mx-auto mt-4 p-6 bg-white shadow rounded-lg">
       <h2 className="text-2xl font-bold mb-4 text-center">
         Carga de Documentos DUA
       </h2>
-      <Tabs defaultActiveKey="directa">
-        <TabPane tab="Carga directa" key="directa">
-          <Form
-            form={formDirecta}
-            onFinish={handleDirectSubmit}
-            layout="vertical"
-            initialValues={{ anio: anioActual }}
-          >
-            <Form.Item
-              label="Número de DUA"
-              name="numero_dua"
-              rules={[{ required: true, message: "Ingrese un número de DUA" }]}
-              getValueFromEvent={(e) => {
-                const raw = e.target.value;
-                // Elimina todo lo que no sea dígito y quita ceros iniciales
-                const cleaned = raw.replace(/\D/g, '').replace(/^0+/, '');
-                return cleaned;
-              }}
-            >
-              <Input placeholder="Ejemplo: 123456789" />
-            </Form.Item>
+      
 
-            <Form.Item
-              label="Año"
-              name="anio"
-              rules={[{ required: true, message: "Ingrese el año de la DUA" }]}
-            >
-              <Input placeholder="Ejemplo: 2025" />
-            </Form.Item>
-
-            <Form.Item
-              label="Archivos"
-              name="archivos"
-              valuePropName="fileList"
-              getValueFromEvent={(e) =>
-                Array.isArray(e) ? e : e && e.fileList
-              }
-              rules={[
-                { required: true, message: "Seleccione al menos un archivo" },
-              ]}
-            >
-              <Upload.Dragger
-                multiple
-                beforeUpload={() => false}
-                onChange={handleFileChange}
-                fileList={fileList}
+      <Tabs
+        defaultActiveKey="directa"
+        items={[
+          {
+            key: "directa",
+            label: "Carga directa",
+            children: (
+              <Form
+                form={formDirecta}
+                onFinish={handleDirectSubmit}
+                layout="vertical"
+                initialValues={{ anio: anioActual }}
               >
-                <p className="ant-upload-drag-icon">
-                  <InboxOutlined />
-                </p>
-                <p className="ant-upload-text">
-                  Haz clic o arrastra los archivos aquí
-                </p>
-              </Upload.Dragger>
-            </Form.Item>
-
-            <Button type="primary" htmlType="submit" disabled={loading} block>
-              {loading ? <Spin size="small" /> : "Subir Documentos"}
-            </Button>
-          </Form>
-        </TabPane>
-
-        <TabPane tab="Carga ZIP/RAR" key="zip">
-          <Form form={formZip} layout="vertical">
-            <Form.Item label="Archivo ZIP o RAR">
-              <Dragger
-                key={fileList2.length} 
-                accept=".zip,.rar"
-                multiple={false}
-                fileList={fileList2}
-                beforeUpload={(file) => {
-                  setArchivoZip(file);
-                  setFileList2([file]);
-                  return false;
-                }}
-                onRemove={() => {
-                  setArchivoZip(null);
-                  setArchivoTemp(null);
-                  setFileList2([]);
-                }}
-                showUploadList={{ showRemoveIcon: true }}
-              >
-                <p className="ant-upload-drag-icon">
-                  <InboxOutlined />
-                </p>
-                <p className="ant-upload-text">
-                  Arrastra o selecciona un archivo comprimido
-                </p>
-              </Dragger>
-            </Form.Item>
-
-
-
-            <Button
-              onClick={handleZipProcesar}
-              disabled={!archivoZip || loading}
-              block
-              className="mb-4"
-            >
-              {loading ? <Spin size="small" /> : "Procesar Archivo"}
-            </Button>
-
-            {carpetas.length > 0 && (
-              <>
-                <h3 className="text-lg font-semibold mt-4">
-                  Asignar número de DUA y año por carpeta:
-                </h3>
-                {carpetas.map((carpeta, index) => (
-                  <div key={index} className="flex gap-2 items-center mb-2">
-                    <span className="w-1/3">{carpeta}</span>
-
-                    <Input
-                      placeholder="Número de DUA"
-                      className="w-1/3"
-                      value={duasPorCarpeta[carpeta]?.numero_dua || ""}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        const cleaned = raw.replace(/\D/g, '').replace(/^0+/, '');
-                        setDuasPorCarpeta((prev) => ({
-                          ...prev,
-                          [carpeta]: {
-                            ...(prev[carpeta] || {}),
-                            numero_dua: cleaned,
-                          },
-                        }));
-                      }}
-                    />
-
-                    <Input
-                      placeholder="Año"
-                      className="w-1/3"
-                      value={duasPorCarpeta[carpeta]?.anio || ""}
-                      onChange={(e) =>
-                        setDuasPorCarpeta((prev) => ({
-                          ...prev,
-                          [carpeta]: {
-                            ...(prev[carpeta] || {}),
-                            anio: e.target.value,
-                          },
-                        }))
-                      }
-                    />
-                  </div>
-                ))}
-
-                <Button
-                  type="primary"
-                  onClick={handleGuardarZip}
-                  disabled={loading}
-                  block
+                <Form.Item
+                  label="Número de DUA"
+                  name="numero_dua"
+                  rules={[{ required: true, message: "Ingrese un número de DUA" }]}
+                  getValueFromEvent={(e) => {
+                    const raw = e.target.value;
+                    // Elimina todo lo que no sea dígito y quita ceros iniciales
+                    const cleaned = raw.replace(/\D/g, '').replace(/^0+/, '');
+                    return cleaned;
+                  }}
                 >
-                  {loading ? <Spin size="small" /> : "Guardar Asignaciones"}
+                  <Input placeholder="Ejemplo: 123456789" />
+                </Form.Item>
+
+                <Form.Item
+                  label="Año"
+                  name="anio"
+                  rules={[{ required: true, message: "Ingrese el año de la DUA" }]}
+                >
+                  <Input placeholder="Ejemplo: 2025" />
+                </Form.Item>
+
+                <Form.Item
+                  label="Archivos"
+                  name="archivos"
+                  valuePropName="fileList"
+                  getValueFromEvent={(e) =>
+                    Array.isArray(e) ? e : e && e.fileList
+                  }
+                  rules={[
+                    { required: true, message: "Seleccione al menos un archivo" },
+                  ]}
+                >
+                  <Upload.Dragger
+                    multiple
+                    beforeUpload={() => false}
+                    onChange={handleFileChange}
+                    fileList={fileList}
+                  >
+                    <p className="ant-upload-drag-icon">
+                      <InboxOutlined />
+                    </p>
+                    <p className="ant-upload-text">
+                      Haz clic o arrastra los archivos aquí
+                    </p>
+                  </Upload.Dragger>
+                </Form.Item>
+
+                <Button type="primary" htmlType="submit" disabled={loading} block>
+                  {loading ? <Spin size="small" /> : "Subir Documentos"}
                 </Button>
-              </>
-            )}
-          </Form>
-        </TabPane>
-      </Tabs>
+              </Form>
+            ),
+          },
+          {
+            key: "zip",
+            label: "Carga ZIP/RAR",
+            children: (
+              <Form form={formZip} layout="vertical">
+                <Form.Item label="Archivo ZIP o RAR">
+                  <Dragger
+                    key={fileList2.length}
+                    accept=".zip,.rar"
+                    multiple={false}
+                    fileList={fileList2}
+                    beforeUpload={(file) => {
+                      setArchivoZip(file);
+                      setFileList2([file]);
+                      return false;
+                    }}
+                    onRemove={() => {
+                      setArchivoZip(null);
+                      setArchivoTemp(null);
+                      setFileList2([]);
+                    }}
+                    showUploadList={{ showRemoveIcon: true }}
+                  >
+                    <p className="ant-upload-drag-icon">
+                      <InboxOutlined />
+                    </p>
+                    <p className="ant-upload-text">
+                      Arrastra o selecciona un archivo comprimido
+                    </p>
+                  </Dragger>
+                </Form.Item>
+                <Button
+                  onClick={handleZipProcesar}
+                  disabled={!archivoZip || loading}
+                  block
+                  className="mb-4"
+                >
+                  {loading ? <Spin size="small" /> : "Procesar Archivo"}
+                </Button>
+                {carpetas.length > 0 && (
+                  <>
+                    <h3 className="text-lg font-semibold mt-4">
+                      Asignar número de DUA y año por carpeta:
+                    </h3>
+                    {carpetas.map((carpeta, index) => (
+                      <div key={index} className="flex gap-2 items-center mb-2">
+                        <span className="w-1/3">{carpeta}</span>
+
+                        <Input
+                          placeholder="Número de DUA"
+                          className="w-1/3"
+                          value={duasPorCarpeta[carpeta]?.numero_dua || ""}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            const cleaned = raw.replace(/\D/g, '').replace(/^0+/, '');
+                            setDuasPorCarpeta((prev) => ({
+                              ...prev,
+                              [carpeta]: {
+                                ...(prev[carpeta] || {}),
+                                numero_dua: cleaned,
+                              },
+                            }));
+                          }}
+                        />
+
+                        <Input
+                          placeholder="Año"
+                          className="w-1/3"
+                          value={duasPorCarpeta[carpeta]?.anio || ""}
+                          onChange={(e) =>
+                            setDuasPorCarpeta((prev) => ({
+                              ...prev,
+                              [carpeta]: {
+                                ...(prev[carpeta] || {}),
+                                anio: e.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                    ))}
+
+                    <Button
+                      type="primary"
+                      onClick={handleGuardarZip}
+                      disabled={loading}
+                      block
+                    >
+                      {loading ? <Spin size="small" /> : "Guardar Asignaciones"}
+                    </Button>
+                  </>
+                )}
+              </Form>
+            ),
+          },
+        ]}
+      />
+
+
     </div>
   );
 };

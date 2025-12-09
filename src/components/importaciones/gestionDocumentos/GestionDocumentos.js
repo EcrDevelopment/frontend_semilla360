@@ -11,16 +11,18 @@ import {
   Popconfirm,
   Tooltip,
   Input, // Importamos Input para el filtro personalizado
-  Space, // Importamos Space para el espaciado de botones en el filtro
+  Space, 
+  Spin,
 } from "antd";
 import {
   AiOutlinePlus,
   AiOutlineEdit,
   AiOutlineDownload,
   AiOutlineDelete,
-  AiOutlineEye, // Importamos el icono de visualización
+  AiOutlineEye, 
+  // Importamos el icono de visualización
 } from "react-icons/ai";
-import { SearchOutlined, InboxOutlined, SnippetsOutlined } from "@ant-design/icons"; // Importamos el icono de búsqueda
+import { SearchOutlined, InboxOutlined, SnippetsOutlined, LoadingOutlined } from "@ant-design/icons"; // Importamos el icono de búsqueda
 
 // Asegúrate de que las rutas de importación sean correctas para tus funciones API
 import {
@@ -40,6 +42,7 @@ const ListadoDeclaraciones = () => {
   const [documentos, setDocumentos] = useState([]);
   const [declSeleccionada, setDeclSeleccionada] = useState(null);
   const [fileList, setFileList] = useState([]);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   // Referencia para el input de búsqueda en el filtro (para enfocarlo)
@@ -50,12 +53,15 @@ const ListadoDeclaraciones = () => {
   }, []);
 
   const cargarDeclaraciones = async () => {
-    try {
+    setLoading(true);
+    try {      
       const data = await listarDeclaraciones();
       setDeclaraciones(data);
+      setLoading(false);
     } catch (error) {
       console.error("Error al cargar declaraciones:", error);
       message.error("Error al cargar las declaraciones.");
+      setLoading(false);
     }
   };
 
@@ -371,16 +377,22 @@ const ListadoDeclaraciones = () => {
   return (
     <>
       <div className="w-full h-full p-4 bg-gray-100">
-        <h2 className="text-2xl font-bold m-2">Listado de documentos DUA:</h2>
+        <h2 className="text-2xl font-bold m-2">Documentos de proveedor:</h2>
         <Table
           columns={columns}
           dataSource={declaraciones}
+          loading={{
+            spinning: loading,
+            indicator: <Spin indicator={<LoadingOutlined spin />} size="large" />,
+          }}
           rowKey="id"
           pagination={{
             position: ["bottomLeft"],
             showSizeChanger: true,
             pageSizeOptions: ["10", "20", "50", "100"],
           }}
+          size="small"
+          scroll={{ x: 'max-content' }}
         />
 
         <Modal

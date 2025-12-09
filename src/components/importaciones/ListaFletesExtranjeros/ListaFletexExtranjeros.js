@@ -8,9 +8,10 @@ import {
   message,
   Modal,
   DatePicker,
-  Input
+  Input,
+  Spin
 } from "antd";
-import { DownOutlined, SearchOutlined } from "@ant-design/icons";
+import { DownOutlined, SearchOutlined, LoadingOutlined, DeleteOutlined, DashOutlined } from "@ant-design/icons";
 import qs from "qs";
 import axiosInstance from "../../../axiosConfig";
 import dayjs from "dayjs";
@@ -36,8 +37,7 @@ function ListadoFletes() {
   const items = [
     { key: "1", label: "Editar" },
     { key: "2", label: "Cambiar fecha" },
-    { key: "3", label: "Ver reporte 1" },
-    { key: "4", label: "Ver reporte 2" },
+    { key: "3", label: "Ver reporte" },
   ];
 
   const handleSearch = (selectedKeys, confirm) => {
@@ -57,11 +57,11 @@ function ListadoFletes() {
       case "2":
         handleMostrarModalFechaLlegadaFlete(id);
         break;
-      case "3":
-        handleRecuperarData(id);
+      case "3":        
+        handleVerReporte(id);
         break;
       case "4":
-        handleVerReporte(id);
+        handleRecuperarData(id);
         break;
       default:
         console.log("Opción no reconocida");
@@ -258,6 +258,12 @@ function ListadoFletes() {
     },
   });
 
+  const registrarFlete = () => {
+    return () => {
+      navigate('/importaciones/registrar_flete_internacional');
+    };
+  };
+
 
   const columns = [
     {
@@ -340,15 +346,20 @@ function ListadoFletes() {
     {
       title: "Acciones",
       key: "operation",
+      fixed: 'right',
       render: (item) => (
         <Space size="middle">
-          <Button danger onClick={() => confirmarEliminacion(item.id)}>
-            Eliminar
-          </Button>
+
+          <Button
+            danger
+            onClick={() => confirmarEliminacion(item.id)}
+            icon={<DeleteOutlined />}
+          />
+
           <Dropdown menu={{ items, onClick: (e) => handleMenuClick(e, item.id) }}>
             <Button>
               <Space>
-                Opciones
+                <DashOutlined />
                 <DownOutlined />
               </Space>
             </Button>
@@ -360,16 +371,29 @@ function ListadoFletes() {
 
   return (
     <div className="w-full h-full p-4 bg-gray-100">
-      <h2 className="text-2xl font-bold m-3">Listado de fletes</h2>
+
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold m-3">Fletes Extranjeros</h2>
+        <Button
+          type="primary"
+          onClick={registrarFlete()}
+        >
+          Nuevo Flete
+        </Button>
+      </div>
       <Table
         columns={columns}
         rowKey="id"
         dataSource={data}
         pagination={tableParams.pagination}
-        loading={loading}
+        loading={{
+          spinning: loading,
+          indicator: <Spin indicator={<LoadingOutlined spin />} size="large" />,
+        }}
         onChange={handleTableChange}
         expandable={{ expandedRowRender }}
         size="small"
+        scroll={{ x: 'max-content' }}
       />
 
       <Modal
