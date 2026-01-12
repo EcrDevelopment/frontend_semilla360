@@ -64,10 +64,10 @@ export async function loginUser(credentials) {
 
     // Guarda tokens en cookies
     setAuthCookies(access, refresh);
-
     return {
       success: true,
-      token: { access, refresh },
+      access: access,
+      refresh: refresh,
       userData: user,
       roles,
       permissions
@@ -87,16 +87,14 @@ export async function loginUser(credentials) {
 export async function verifyCredentials(credentials) {
   try {
     const response = await axiosInstance.post('/accounts/auth/login/', credentials);
-    
+    const { access, refresh, user } = response.data;
     // No llama a setAuthCookies (diferencia clave)
 
     return {
       success: true,
-      token: {
-        access: response.data.access,
-        refresh: response.data.refresh,
-      },
-      userData: response.data.user,
+      access: access,
+      refresh: refresh,
+      userData: user
       // No devuelve roles ni permisos (diferencia clave)
     };
   } catch (error) {

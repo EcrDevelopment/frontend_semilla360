@@ -50,8 +50,10 @@ const TransferenciasPage = () => {
   const [dataLoaded, setDataLoaded] = useState(false);
 
   // Estados para los Selects
+  const [almacenesOrigen, setAlmacenesOrigen] = useState([]);   // Lista completa (catalog=true)
+  const [almacenesDestino, setAlmacenesDestino] = useState([]); // Lista restringida (default)
   const [empresas, setEmpresas] = useState([]);
-  const [almacenes, setAlmacenes] = useState([]); // Un solo estado para almacenes
+  //const [almacenes, setAlmacenes] = useState([]); // Un solo estado para almacenes
   const [loadingEmpresas, setLoadingEmpresas] = useState(false);
   const [loadingAlmacenes, setLoadingAlmacenes] = useState(false);
 
@@ -67,6 +69,7 @@ const TransferenciasPage = () => {
 
     try {
       const params = {
+        //all:true,
         page: page,
         page_size: pageSize,
         ...currentFilters,
@@ -84,8 +87,8 @@ const TransferenciasPage = () => {
 
       const { data } = await getTransferencias(params);
 
-      setTransferencias(data || []);
-      console.log('Transferencias cargadas:', data || []);
+      setTransferencias(data.results || []);
+      console.log('Transferencias cargadas:', data.results || []);
       setPagination({
         current: page,
         pageSize,
@@ -120,11 +123,30 @@ const TransferenciasPage = () => {
   const fetchAlmacenesPorEmpresa = useCallback(async (empresaId) => {
     setLoadingAlmacenes(true);
     try {
-      const res = await getAlmacenes({ empresa: empresaId });
-      setAlmacenes(res.data.results || res.data); // Maneja paginación o lista simple
+      // Hacemos dos peticiones simultáneas usando Promise.all
+      const [resOrigen, resDestino] = await Promise.all([
+        // 1. Para Origen: Pedimos TODOS (catalog: true)
+        getAlmacenes({
+          empresa: empresaId,
+          all: true,
+          catalog: true // <--- Este trae TODOS los de la empresa
+        }),
+
+        // 2. Para Destino: Pedimos solo los ASIGNADOS (sin flag catalog)
+        getAlmacenes({
+          empresa: empresaId,
+          all: true
+          // Al no enviar catalog, tu Backend aplica el filtro de seguridad
+        })
+      ]);
+
+      setAlmacenesOrigen(resOrigen.data.results || resOrigen.data);
+      setAlmacenesDestino(resDestino.data.results || resDestino.data);
+
     } catch (error) {
-      message.error('Error al cargar almacenes de la empresa');
-      setAlmacenes([]);
+      message.error('Error al cargar almacenes');
+      setAlmacenesOrigen([]);
+      setAlmacenesDestino([]);
     } finally {
       setLoadingAlmacenes(false);
     }
@@ -132,17 +154,19 @@ const TransferenciasPage = () => {
 
   // ¡REFACTOR! Manejador central para cambios en el formulario
   const handleFormValuesChange = (changedValues, allValues) => {
-    // Si la 'empresa' cambió...
     if (changedValues.hasOwnProperty('empresa')) {
       const empresaId = changedValues.empresa;
       form.setFieldsValue({
         almacen_destino: null,
         almacen_origen: null
       });
+
       if (empresaId) {
         fetchAlmacenesPorEmpresa(empresaId);
       } else {
-        setAlmacenes([]); // Si limpian la empresa, limpia los almacenes
+        // Limpiamos ambas listas
+        setAlmacenesOrigen([]);
+        setAlmacenesDestino([]);
       }
     }
   };
@@ -165,7 +189,8 @@ const TransferenciasPage = () => {
     setTransferencias([]);
     setPagination({ current: 1, pageSize: 10, total: 0 });
     setDataLoaded(false);
-    setAlmacenes([]); // Limpia los almacenes
+    setAlmacenesOrigen([]);
+    setAlmacenesDestino([]); // Limpia los almacenes
   };
 
   // --- Manejo del Modal ---
@@ -355,16 +380,13 @@ const TransferenciasPage = () => {
               >
                 <Select
                   placeholder="Seleccione un Almacén"
-                  style={{ width: '100%' }}
                   loading={loadingAlmacenes}
-                  allowClear
                   showSearch
                   optionFilterProp="children"
-                  // ¡REFACTOR! Eliminados 'value' y 'onChange'
-                  disabled={loadingAlmacenes || almacenes.length === 0}
+                  // CAMBIO AQUÍ: Usamos almacenesDestino
+                  disabled={loadingAlmacenes || almacenesDestino.length === 0}
                 >
-                  {/* ¡CORREGIDO! Usar 'descripcion' */}
-                  {almacenes.map(alm => (
+                  {almacenesDestino.map(alm => (
                     <Select.Option key={alm.id} value={alm.id}>
                       {`${alm.codigo} - ${alm.descripcion}`}
                     </Select.Option>
@@ -391,16 +413,16 @@ const TransferenciasPage = () => {
             </Col>
 
             <Col xs={24} sm={12} md={6}>
-              <Form.Item name="almacen_origen" label="Almacén Origen (Opcional)">
+              <Form.Item name="almacen_origen" label="Almacén Origen">
                 <Select
                   placeholder="Cualquier origen"
                   allowClear
                   showSearch
                   optionFilterProp="children"
-                  disabled={loadingAlmacenes || almacenes.length === 0}
+                  // CAMBIO AQUÍ: Usamos almacenesOrigen
+                  disabled={loadingAlmacenes || almacenesOrigen.length === 0}
                 >
-                  {/* ¡CORREGIDO! Usar 'descripcion' */}
-                  {almacenes.map(a => (
+                  {almacenesOrigen.map(a => (
                     <Select.Option key={a.id} value={a.id}>
                       {`${a.codigo} - ${a.descripcion}`}
                     </Select.Option>
@@ -443,18 +465,24 @@ const TransferenciasPage = () => {
           }}
           size='small'
           rowKey="id"
+
+          // AQUÍ ESTÁ LA CORRECCIÓN CRÍTICA
           pagination={{
+            current: pagination.current,   // <--- Vincular página actual
+            pageSize: pagination.pageSize, // <--- Vincular tamaño de página
+            total: pagination.total,       // <--- Vincular total (DRF count)
+
             position: ["bottomLeft"],
             showSizeChanger: true,
             pageSizeOptions: ["10", "25", "50", "100"],
             showTotal: (total, range) => `${range[0]}-${range[1]} de ${total} movimientos`
           }}
+
           onChange={handleTableChange}
           scroll={{ x: 1300 }}
           bordered
         />
       ) : (
-        // Estado inicial
         <Card>
           <Empty description="Seleccione una empresa y un almacén de destino para comenzar la búsqueda." />
         </Card>

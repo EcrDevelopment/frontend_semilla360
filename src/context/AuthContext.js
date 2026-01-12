@@ -131,19 +131,22 @@ export const AuthProvider = ({ children }) => {
     try {
       const result = await loginUser({ username, password });
       if (result.success) {
-        const { token, userData, roles: userRoles, permissions: userPermissions } = result;
-        // Guarda tokens en cookies
-        setAuthCookies(token.access, token.refresh);
+        //const { token, userData, roles: userRoles, permissions: userPermissions } = result;
+       // console.log('Resultado del login:', result);
+        const { access, refresh, userData, roles, permissions } = result;
+
+        
+        setAuthCookies(access, refresh);
         // Guarda datos en localStorage
         localStorage.setItem('user_data', JSON.stringify(userData));
-        localStorage.setItem('roles', JSON.stringify(userRoles));
-        localStorage.setItem('permissions', JSON.stringify(userPermissions));
+        localStorage.setItem('roles', JSON.stringify(roles));
+        localStorage.setItem('permissions', JSON.stringify(permissions));
         localStorage.setItem('lastActivity', Date.now().toString());
 
         setIsAuthenticated(true);
         setUser(userData);
-        setRoles(userRoles);
-        setPermissions(userPermissions);
+        setRoles(roles);
+        setPermissions(permissions);
         return { success: true };
       } else {
         logout();

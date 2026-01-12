@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Form, InputNumber, Button, DatePicker } from 'antd';
-import DynamicFields from './OtrosGastosFields';
+//import DynamicFields from './OtrosGastosFields';
 
 
 function FormularioIngresos() {
 
     const [form] = Form.useForm();
     
+    const onFinish = (values) => {
+        console.log('Formulario enviado:', values);
+    };
 
 
     return (
@@ -228,9 +231,7 @@ function FormularioIngresos() {
                 </div>
                     <hr></hr>   
                     <h3 className='w-full p-2 font-semibold text-xl'> Otros gastos:</h3>    
-                <div className='w-full justify-center items-center'>
-                    <DynamicFields />
-                </div>
+               
 
 
                 {/* Botón de enviar */}

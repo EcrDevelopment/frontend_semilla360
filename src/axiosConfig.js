@@ -42,7 +42,9 @@ export const getRefreshTokenFromCookie = () => getTokenFromCookie('refresh_token
  * a ataques XSS si tu app tiene alguna vulnerabilidad.
  */
 export const setAuthCookies = (access, refresh) => {
+  //console.log('access token to set in cookie:', access);
   document.cookie = `access_token=${access}; path=/; max-age=900`; // 15 minutos
+  //console.log('refresh token to set in cookie:', refresh);
   document.cookie = `refresh_token=${refresh}; path=/; max-age=${7 * 24 * 60 * 60}`; // 7 días
 };
 

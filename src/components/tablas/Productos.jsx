@@ -8,33 +8,38 @@ import {
   EditOutlined,
   DeleteOutlined,
   LoadingOutlined,
-  SearchOutlined // NUEVO: Para inputs de filtro
+  SearchOutlined
 } from '@ant-design/icons';
 import {
   getProductos,
   createProducto,
   updateProducto,
   deleteProducto
-} from '../../api/Productos'; // MODIFICADO: getProductos ahora acepta filtros
+} from '../../api/Productos';
 import { getEmpresas } from '../../api/Empresas';
 
 export default function ProductoCRUD() {
-  const [data, setData] = useState([]); // Almacena los productos (ya filtrados por el backend)
+  const [data, setData] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [empresasMap, setEmpresasMap] = useState(new Map());
   
-  // NUEVO: Estados de carga separados
   const [tableLoading, setTableLoading] = useState(false);
   const [empresaLoading, setEmpresaLoading] = useState(false);
+
+  // 1. Estado para manejar la paginación
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  // Instancias de formularios separadas
-  const [form] = Form.useForm(); // Formulario del Modal
-  const [filterForm] = Form.useForm(); // NUEVO: Formulario para los filtros
+  const [form] = Form.useForm();
+  const [filterForm] = Form.useForm();
 
-  // NUEVO: Estado para guardar los valores de los filtros
+  // Estado para guardar los valores de los filtros
   const [filters, setFilters] = useState({
     nombre_producto: null,
     codigo_producto: null,
@@ -42,15 +47,17 @@ export default function ProductoCRUD() {
     empresa: null,
   });
 
-  // NUEVO: useEffect para cargar EMPRESAS (solo 1 vez)
+  // Cargar EMPRESAS (solo 1 vez)
   useEffect(() => {
     const fetchEmpresas = async () => {
       setEmpresaLoading(true);
       try {
-        const empresasRes = await getEmpresas();
-        setEmpresas(empresasRes.data);
+        const empresasRes = await getEmpresas({ all: true }); // Asegura traer todas para el select
+        setEmpresas(empresasRes.data.results || empresasRes.data);
+        
+        const listaEmpresas = empresasRes.data.results || empresasRes.data;
         const eMap = new Map(
-          empresasRes.data.map(emp => [
+          listaEmpresas.map(emp => [
             emp.id,
             emp.razon_social || emp.nombre_empresa
           ])
@@ -63,36 +70,65 @@ export default function ProductoCRUD() {
       }
     };
     fetchEmpresas();
-  }, []); // Dependencia vacía = solo se ejecuta al montar
+  }, []);
 
-  // NUEVO: useEffect para cargar PRODUCTOS (se ejecuta al montar y si 'filters' cambia)
+  // 2. Función centralizada para cargar PRODUCTOS
+  const fetchProductos = async (page = 1, pageSize = 10, currentFilters = filters) => {
+    setTableLoading(true);
+    try {
+      // Limpiamos filtros nulos o vacíos
+      const cleanFilters = {};
+      Object.keys(currentFilters).forEach(key => {
+        if (currentFilters[key] !== '' && currentFilters[key] !== null && currentFilters[key] !== undefined) {
+          cleanFilters[key] = currentFilters[key];
+        }
+      });
+
+      // Añadimos parámetros de paginación
+      const params = {
+        ...cleanFilters,
+        page: page,
+        page_size: pageSize
+      };
+
+      const productosRes = await getProductos(params);
+      
+      // DRF devuelve: { count: 100, results: [...] }
+      setData(productosRes.data.results);
+      
+      // Actualizamos paginación con el total real
+      setPagination({
+        current: page,
+        pageSize: pageSize,
+        total: productosRes.data.count,
+      });
+
+    } catch (error) {
+      console.error(error);
+      message.error('Error al obtener productos');
+    } finally {
+      setTableLoading(false);
+    }
+  };
+
+  // Carga inicial
   useEffect(() => {
-    const fetchProductos = async () => {
-      setTableLoading(true);
-      try {
-        // Limpiamos filtros nulos o vacíos para no enviar params vacíos
-        const cleanFilters = {};
-        Object.keys(filters).forEach(key => {
-          if (filters[key] !== '' && filters[key] !== null) {
-            cleanFilters[key] = filters[key];
-          }
-        });
+    fetchProductos(pagination.current, pagination.pageSize, filters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
 
-        // ¡Llamamos a la API con los filtros!
-        const productosRes = await getProductos(cleanFilters);
-        setData(productosRes.data);
-      } catch (error) {
-        message.error('Error al obtener productos');
-      } finally {
-        setTableLoading(false);
-      }
-    };
+  // 3. Handler para cambio de página en la Tabla
+  const handleTableChange = (newPagination) => {
+    fetchProductos(newPagination.current, newPagination.pageSize, filters);
+  };
 
-    fetchProductos();
+  // 4. Handler para cambio en los Filtros
+  const handleFilterChange = (_, allValues) => {
+    setFilters(allValues);
+    // Al filtrar, siempre volvemos a la página 1
+    fetchProductos(1, pagination.pageSize, allValues);
+  };
 
-  }, [filters]); // <--- Se re-ejecuta cada vez que 'filters' cambia
-
-  // MODIFICADO: handleSubmit
   const handleSubmit = async (values) => {
     try {
       if (editing) {
@@ -106,56 +142,44 @@ export default function ProductoCRUD() {
       form.resetFields();
       setEditing(null);
       
-      // NUEVO: Refrescar la tabla
-      // Forzamos un re-fetch creando una nueva referencia del objeto filters
-      setFilters(currentFilters => ({ ...currentFilters }));
+      // Refrescar manteniendo la página actual
+      fetchProductos(pagination.current, pagination.pageSize, filters);
 
     } catch (error) {
       message.error('Error al guardar el producto');
     }
   };
 
-  // MODIFICADO: handleDelete
   const handleDelete = async (id) => {
     try {
       await deleteProducto(id);
-      message.success('Producto eliminado (soft-delete)');
-      
-      // NUEVO: Refrescar la tabla
-      setFilters(currentFilters => ({ ...currentFilters }));
-
+      message.success('Producto eliminado');
+      // Refrescar manteniendo la página actual
+      fetchProductos(pagination.current, pagination.pageSize, filters);
     } catch {
       message.error('Error al eliminar');
     }
-  };
-
-  // NUEVO: Handler para cuando cambian los filtros del formulario
-  const handleFilterChange = (changedValues, allValues) => {
-    setFilters(allValues);
   };
 
   const columns = [
     { 
       title: 'ID', 
       dataIndex: 'id',
-      sorter: (a, b) => a.id - b.id, // Sorter (client-side sobre la data recibida)
+      width: 80,
     },
     {
       title: 'Nombre Producto',
       dataIndex: 'nombre_producto',
-      sorter: (a, b) => a.nombre_producto.localeCompare(b.nombre_producto),
       ellipsis: true,
       render: (text) => (<Tooltip placement="topLeft" title={text}>{text}</Tooltip>),
     },
     {
       title: 'Código',
       dataIndex: 'codigo_producto',
-      sorter: (a, b) => a.codigo_producto.localeCompare(b.codigo_producto),
     },
     {
       title: 'Proveedor / Marca',
       dataIndex: 'proveedor_marca',
-      sorter: (a, b) => a.proveedor_marca.localeCompare(b.proveedor_marca),
     },
     {
       title: 'Empresa',
@@ -164,20 +188,16 @@ export default function ProductoCRUD() {
       render: (empresaId) => (
         <Tag color="blue">{empresasMap.get(empresaId) || 'No asignada'}</Tag>
       ),
-      // Sorter para un campo renderizado
-      sorter: (a, b) => {
-        const nameA = empresasMap.get(a.empresa) || '';
-        const nameB = empresasMap.get(b.empresa) || '';
-        return nameA.localeCompare(nameB);
-      },
     },
     {
       title: 'Acciones',
       fixed: 'right',
+      width: 120,
       render: (_, record) => (
         <div className="flex gap-2">
           <Button
             icon={<EditOutlined />}
+            size="small"
             onClick={() => {
               setEditing(record);
               form.setFieldsValue(record);
@@ -188,7 +208,7 @@ export default function ProductoCRUD() {
             title="¿Seguro que deseas eliminar?"
             onConfirm={() => handleDelete(record.id)}
           >
-            <Button icon={<DeleteOutlined />} danger />
+            <Button icon={<DeleteOutlined />} danger size="small" />
           </Popconfirm>
         </div>
       ),
@@ -212,32 +232,32 @@ export default function ProductoCRUD() {
         </Button>
       </div>
 
-      {/* NUEVO: Barra de Filtros */}
+      {/* Barra de Filtros */}
       <Form
         form={filterForm}
         layout="inline"
-        onValuesChange={handleFilterChange} // Se llama al cambiar cualquier campo
-        className="mb-4 p-4 bg-gray-50 rounded-lg"
+        onValuesChange={handleFilterChange}
+        className="mb-4 p-4 bg-gray-50 rounded-lg gap-y-4"
       >
         <Form.Item name="nombre_producto" label="Nombre">
           <Input 
-            placeholder="Buscar por nombre" 
+            placeholder="Buscar..." 
             allowClear 
             prefix={<SearchOutlined style={{ color: '#aaa' }} />} 
           />
         </Form.Item>
         <Form.Item name="codigo_producto" label="Código">
-          <Input placeholder="Buscar por código" allowClear />
+          <Input placeholder="Buscar..." allowClear />
         </Form.Item>
         <Form.Item name="proveedor_marca" label="Marca">
-          <Input placeholder="Buscar por marca" allowClear />
+          <Input placeholder="Buscar..." allowClear />
         </Form.Item>
         <Form.Item name="empresa" label="Empresa">
           <Select
-            placeholder="Todas las empresas"
+            placeholder="Todas"
             allowClear
             style={{ width: 200 }}
-            loading={empresaLoading} // Carga de empresas
+            loading={empresaLoading}
             options={empresas.map(emp => ({
               value: emp.id,
               label: emp.razon_social || emp.nombre_empresa
@@ -245,23 +265,28 @@ export default function ProductoCRUD() {
           />
         </Form.Item>
       </Form>
-      {/* FIN: Barra de Filtros */}
 
       <Table
         columns={columns}
-        dataSource={data} // MODIFICADO: 'data' ya viene filtrada del backend
+        dataSource={data}
         rowKey="id"
         loading={{
-          spinning: tableLoading, // MODIFICADO: usa 'tableLoading'
+          spinning: tableLoading,
           indicator: <Spin indicator={<LoadingOutlined spin />} size="large" />,
         }}
         scroll={{ x: 1000 }}
+        size='small'
+        
+        // 5. Conectar paginación y evento onChange
         pagination={{
-          position: ["bottomLeft"],
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
           showSizeChanger: true,
           pageSizeOptions: ["10", "20", "50", "100"],
+          position: ["bottomLeft"],
         }}
-        size='small'
+        onChange={handleTableChange}
       />
 
       <Modal
@@ -287,7 +312,7 @@ export default function ProductoCRUD() {
           >
             <Select
               placeholder="Seleccione una empresa"
-              loading={empresaLoading} // MODIFICADO: usa 'empresaLoading'
+              loading={empresaLoading}
               options={empresas.map(emp => ({
                 value: emp.id,
                 label: emp.razon_social || emp.nombre_empresa

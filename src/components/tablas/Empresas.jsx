@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Table, Button, Modal, Form, Input, Popconfirm, message, Spin,Tag
+  Table, Button, Modal, Form, Input, Popconfirm, message, Spin, Tag
 } from 'antd';
 import {
   PlusOutlined,
@@ -13,21 +13,45 @@ import {
   createEmpresa,
   updateEmpresa,
   deleteEmpresa
-} from '../../api/Empresas'; // <-- Servicio actualizado
+} from '../../api/Empresas';
 
 export default function EmpresaCRUD() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // 1. Estado para manejar la paginación
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10, // Debe coincidir con tu PAGE_SIZE de Django
+    total: 0,
+  });
+
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [editing, setEditing] = useState(null);
 
-  const fetchData = async () => {
+  // 2. fetchData ahora acepta página y tamaño
+  const fetchData = async (page = 1, pageSize = 10) => {
     setLoading(true);
     try {
-      const res = await getEmpresas();
-      setData(res.data);
+      // Enviamos los params que DRF espera (page y page_size)
+      const res = await getEmpresas({ 
+        page: page, 
+        page_size: pageSize 
+      });
+      
+      // DRF devuelve: { count: 50, next: '...', results: [...] }
+      setData(res.data.results); 
+      
+      // Actualizamos el estado de la paginación con el total real
+      setPagination({
+        current: page,
+        pageSize: pageSize,
+        total: res.data.count, 
+      });
+
     } catch (error) {
+      console.error(error);
       message.error('Error al obtener las empresas');
     } finally {
       setLoading(false);
@@ -35,8 +59,14 @@ export default function EmpresaCRUD() {
   };
 
   useEffect(() => {
-    fetchData();
+    // Cargar la primera página al montar
+    fetchData(pagination.current, pagination.pageSize);
   }, []);
+
+  // 3. Manejador de eventos de la tabla (cambio de página/filtros)
+  const handleTableChange = (newPagination) => {
+    fetchData(newPagination.current, newPagination.pageSize);
+  };
 
   const handleSubmit = async (values) => {
     try {
@@ -50,7 +80,8 @@ export default function EmpresaCRUD() {
       setModalOpen(false);
       form.resetFields();
       setEditing(null);
-      fetchData();
+      // Recargar la página actual
+      fetchData(pagination.current, pagination.pageSize);
     } catch (error) {
       message.error('Error al guardar la empresa');
     }
@@ -59,8 +90,9 @@ export default function EmpresaCRUD() {
   const handleDelete = async (id) => {
     try {
       await deleteEmpresa(id);
-      message.success('Empresa eliminada (soft-delete)');
-      fetchData(); // El backend (BaseModelManager) ya no la mostrará
+      message.success('Empresa eliminada');
+      // Recargar la página actual
+      fetchData(pagination.current, pagination.pageSize);
     } catch {
       message.error('Error al eliminar');
     }
@@ -70,14 +102,12 @@ export default function EmpresaCRUD() {
     {
       title: 'ID',
       dataIndex: 'id',
+      width: 80,
     },
     {
       title: 'Razón Social / Nombre',
       dataIndex: 'razon_social',
-      // Usamos el __str__ que definimos en Django
-      //render: (text, record) => record.razon_social || record.nombre_empresa,
-      render: (text,record) => (
-        // --- MEJORA 3: Usar <Tag> para mejor UI ---
+      render: (text, record) => (
         <Tag color="blue">{record.razon_social || record.nombre_empresa}</Tag>
       ),
     },
@@ -92,10 +122,12 @@ export default function EmpresaCRUD() {
     {
       title: 'Acciones',
       fixed: 'right',
+      width: 120,
       render: (_, record) => (
         <div className="flex gap-2">
           <Button
             icon={<EditOutlined />}
+            size="small"
             onClick={() => {
               setEditing(record);
               form.setFieldsValue(record);
@@ -106,7 +138,7 @@ export default function EmpresaCRUD() {
             title="¿Seguro que deseas eliminar?"
             onConfirm={() => handleDelete(record.id)}
           >
-            <Button icon={<DeleteOutlined />} danger />
+            <Button icon={<DeleteOutlined />} danger size="small" />
           </Popconfirm>
         </div>
       ),
@@ -129,6 +161,7 @@ export default function EmpresaCRUD() {
           Nueva Empresa
         </Button>
       </div>
+      
       <Table
         columns={columns}
         dataSource={data}
@@ -138,13 +171,18 @@ export default function EmpresaCRUD() {
           indicator: <Spin indicator={<LoadingOutlined spin />} size="large" />,
         }}
         scroll={{ x: 'max-content' }}
-        pagination={{
-          position: ["bottomLeft"],
-          showSizeChanger: true,
-          pageSizeOptions: ["10", "20", "50", "100"],
-        }}
         size='small'
-
+        
+        // 4. Conectar la paginación y el evento onChange
+        pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true,
+            pageSizeOptions: ["5", "10", "20", "50"],
+            position: ["bottomLeft"],
+        }}
+        onChange={handleTableChange} 
       />
 
       <Modal

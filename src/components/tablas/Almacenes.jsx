@@ -1,17 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
   Table, Button, Modal, Form, Input, Popconfirm, message, Select, Spin,
-  Card, // <-- 1. Importar Card
-  Tooltip, // <-- 2. Importar Tooltip
-  Tag, // <-- 3. Importar Tag
-  Space // <-- 4. Importar Space
+  Card, Tooltip, Tag, Space
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   LoadingOutlined,
-  SearchOutlined // <-- 5. Importar ícono de búsqueda
+  SearchOutlined
 } from '@ant-design/icons';
 import {
   getAlmacenes,
@@ -22,49 +19,105 @@ import {
 import { getEmpresas } from '../../api/Empresas';
 
 export default function AlmacenCRUD() {
+  // Estados de datos
   const [data, setData] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [empresasMap, setEmpresasMap] = useState(new Map());
+  
+  // Estados de carga
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Estados de control
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [editing, setEditing] = useState(null);
 
-  // --- MEJORA 1: Estado para el botón de "Guardar" ---
-  const [submitting, setSubmitting] = useState(false);
+  // 1. Estado de Paginación
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
-  // --- MEJORA 2: Estado para el filtro de búsqueda ---
+  // 2. Estado de Búsqueda
   const [searchText, setSearchText] = useState('');
 
-  const fetchData = async () => {
+  // --- EFECTO 1: Cargar Empresas (Solo una vez al montar) ---
+  useEffect(() => {
+    const fetchEmpresas = async () => {
+      try {
+        const res = await getEmpresas({ all: true });
+        // Manejo flexible por si tu API devuelve array directo o paginado
+        const lista = Array.isArray(res.data) ? res.data : (res.data.results || []);
+        
+        setEmpresas(lista);
+        const eMap = new Map(
+          lista.map(emp => [
+            emp.id,
+            emp.razon_social || emp.nombre_empresa
+          ])
+        );
+        setEmpresasMap(eMap);
+      } catch (error) {
+        message.error('Error al cargar empresas');
+      }
+    };
+    fetchEmpresas();
+  }, []);
+
+  // --- FUNCIÓN PRINCIPAL: Cargar Almacenes (Paginado + Búsqueda) ---
+  const fetchAlmacenes = async (page = 1, pageSize = 10, search = '') => {
     setLoading(true);
     try {
-      const [almacenesRes, empresasRes] = await Promise.all([
-        getAlmacenes(),
-        getEmpresas()
-      ]);
-      setData(almacenesRes.data);
-      setEmpresas(empresasRes.data);
-      const eMap = new Map(
-        empresasRes.data.map(emp => [
-          emp.id,
-          emp.razon_social || emp.nombre_empresa
-        ])
-      );
-      setEmpresasMap(eMap);
+      const params = {
+        page: page,
+        page_size: pageSize,
+      };
+
+      // Solo añadimos search si tiene texto
+      if (search) {
+        params.search = search; 
+        // NOTA: Esto asume que tu backend usa SearchFilter. 
+        // Si usas filtros manuales, cambia 'search' por 'descripcion' o lo que corresponda.
+      }
+
+      const res = await getAlmacenes(params);
+      
+      setData(res.data.results);
+      setPagination({
+        current: page,
+        pageSize: pageSize,
+        total: res.data.count,
+      });
     } catch (error) {
-      message.error('Error al obtener datos');
+      message.error('Error al obtener almacenes');
     } finally {
       setLoading(false);
     }
   };
 
+  // --- EFECTO 2: Manejo de Búsqueda con Debounce ---
   useEffect(() => {
-    fetchData();
-  }, []);
+    // Creamos un temporizador para no llamar a la API en cada tecla
+    const timer = setTimeout(() => {
+      // Al buscar, siempre reseteamos a la página 1
+      fetchAlmacenes(1, pagination.pageSize, searchText);
+    }, 500); // Espera 500ms después de que dejes de escribir
+
+    return () => clearTimeout(timer); // Limpia el timer si escribes rápido
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchText]); 
+  // Nota: No incluimos pagination.pageSize aquí para evitar doble carga inicial,
+  // el cambio de pageSize se maneja en handleTableChange.
+
+  // 3. Handler de cambio de tabla (Paginación)
+  const handleTableChange = (newPagination) => {
+    fetchAlmacenes(newPagination.current, newPagination.pageSize, searchText);
+  };
 
   const handleSubmit = async (values) => {
-    setSubmitting(true); // <-- MEJORA 1: Activar loading del botón
+    setSubmitting(true);
     try {
       if (editing) {
         await updateAlmacen(editing.id, values);
@@ -76,12 +129,12 @@ export default function AlmacenCRUD() {
       setModalOpen(false);
       form.resetFields();
       setEditing(null);
-      fetchData();
+      
+      // Refrescar página actual
+      fetchAlmacenes(pagination.current, pagination.pageSize, searchText);
     } catch (error) {
-      // --- MEJORA 4: Manejo de errores específico ---
       let errorMsg = 'Error al guardar el almacén';
       if (error.response && error.response.data) {
-        // Captura el primer error de validación de DRF
         const errors = error.response.data;
         const firstErrorField = Object.keys(errors)[0];
         if (firstErrorField && Array.isArray(errors[firstErrorField])) {
@@ -89,9 +142,8 @@ export default function AlmacenCRUD() {
         }
       }
       message.error(errorMsg);
-      // --- Fin Mejora 4 ---
     } finally {
-      setSubmitting(false); // <-- MEJORA 1: Desactivar loading del botón
+      setSubmitting(false);
     }
   };
 
@@ -99,7 +151,8 @@ export default function AlmacenCRUD() {
     try {
       await deleteAlmacen(id);
       message.success('Almacén eliminado');
-      fetchData();
+      // Refrescar página actual
+      fetchAlmacenes(pagination.current, pagination.pageSize, searchText);
     } catch {
       message.error('Error al eliminar');
     }
@@ -109,27 +162,18 @@ export default function AlmacenCRUD() {
     {
       title: 'Código',
       dataIndex: 'codigo',
-      sorter: (a, b) => a.codigo.localeCompare(b.codigo), // <-- Pequeña mejora: ordenar
     },
     {
       title: 'Descripción Almacén',
       dataIndex: 'descripcion',
-      sorter: (a, b) => a.descripcion.localeCompare(b.descripcion),
     },
     {
       title: 'Empresa',
       dataIndex: 'empresa',
       key: 'empresa',
       render: (empresaId) => (
-        // --- MEJORA 3: Usar <Tag> para mejor UI ---
         <Tag color="blue">{empresasMap.get(empresaId) || 'No asignada'}</Tag>
       ),
-      // Permitir filtrar por empresa
-      filters: Array.from(empresasMap.entries()).map(([id, name]) => ({
-        text: name,
-        value: id,
-      })),
-      onFilter: (value, record) => record.empresa === value,
     },
     {
       title: 'Distrito',
@@ -144,7 +188,6 @@ export default function AlmacenCRUD() {
       fixed: 'right',
       width: 100,
       render: (_, record) => (
-        // --- MEJORA 3: Usar <Space> y <Tooltip> ---
         <Space>
           <Tooltip title="Editar">
             <Button
@@ -169,14 +212,7 @@ export default function AlmacenCRUD() {
     },
   ];
 
-  // --- MEJORA 2: Lógica de filtrado ---
-  const filteredData = data.filter(item =>
-    item.descripcion.toLowerCase().includes(searchText.toLowerCase()) ||
-    item.codigo.toLowerCase().includes(searchText.toLowerCase())
-  );
-
   return (
-    // --- MEJORA 3: Usar <Card> para el layout ---
     <Card
       title={<h2 className="text-xl font-semibold">Gestión de Almacenes</h2>}
       extra={
@@ -192,19 +228,20 @@ export default function AlmacenCRUD() {
           Nuevo Almacén
         </Button>
       }
-      className="m-4 shadow-lg" // <-- Tailwind: Sombra y margen
+      className="m-4 shadow-lg"
     >
-      {/* --- MEJORA 2: Barra de búsqueda --- */}
+      {/* Barra de búsqueda Server-Side */}
       <Input
         placeholder="Buscar por código o descripción..."
         prefix={<SearchOutlined className="text-gray-400" />}
         onChange={e => setSearchText(e.target.value)}
-        className="mb-4 w-full md:w-1/3" // <-- Tailwind: Ancho
+        className="mb-4 w-full md:w-1/3"
+        allowClear
       />
 
       <Table
         columns={columns}
-        dataSource={filteredData} // <-- Usar datos filtrados
+        dataSource={data}
         className='text-small'
         rowKey="id"
         loading={{
@@ -212,12 +249,18 @@ export default function AlmacenCRUD() {
           indicator: <Spin indicator={<LoadingOutlined spin />} size="large" />,
         }}
         scroll={{ x: 'max-content' }}
+        size='small'
+        
+        // Configuración de Paginación
         pagination={{
-          position: ["bottomLeft"],
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
           showSizeChanger: true,
           pageSizeOptions: ["10", "20", "50", "100"],
+          position: ["bottomLeft"],
         }}
-        size='small'
+        onChange={handleTableChange}
       />
 
       <Modal
@@ -228,7 +271,6 @@ export default function AlmacenCRUD() {
           form.resetFields();
           setEditing(null);
         }}
-        // --- MEJORA 1: Loading en el botón OK ---
         okButtonProps={{ loading: submitting }}
         onOk={() => form.submit()}
         okText="Guardar"
@@ -245,7 +287,7 @@ export default function AlmacenCRUD() {
           >
             <Select
               placeholder="Seleccione una empresa"
-              loading={loading} // Se activa mientras se cargan las empresas
+              // Usamos las empresas cargadas en el primer useEffect
               options={empresas.map(emp => ({
                 value: emp.id,
                 label: emp.razon_social || emp.nombre_empresa

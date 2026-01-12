@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Form, Input, message, Progress, Button, Select } from "antd";
-import PermissionsSelect from "./permissionSelect";
+//import PermissionsSelect from "./permissionSelect";
+import PermissionTree from './PermissionTree';
 import EmpresaModal from "./empresaModal";
 import RoleSelect from "./roleSelect";
 
@@ -216,9 +217,22 @@ const UserModal = ({
                 ))}
               </Select>
             </Form.Item>
+
+            
           )}
 
-          <PermissionsSelect permissions={permissions} />
+          <Form.Item 
+            name="permissions" 
+            label="Permisos del Sistema"
+            // Esto asegura que el array [] inicial se maneje bien
+            initialValue={[]} 
+          >
+            {/* Al estar dentro de Form.Item, este componente recibe automáticamente:
+                value={form.getFieldValue('permissions')}
+                onChange={(val) => form.setFieldsValue({ permissions: val })}
+            */}
+            <PermissionTree permissions={permissions} />
+          </Form.Item>
         </Form>
       </Modal>
 
