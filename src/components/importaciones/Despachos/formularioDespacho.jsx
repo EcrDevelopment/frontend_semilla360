@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Spin, message, Tabs } from 'antd'; 
 import SeccionGeneral from './SeccionGeneral';
-import SeccionOrdenes from './SeccionOrdenes_2';
+import SeccionOrdenes from './SeccionOrdenes';
 import TablaDetalleDespacho from './TablaDetalleDespacho';
 import TablaConfiguracion from './TablaConfiguracion';
 import TablaGastosExtra from './TablaGastosExtra';

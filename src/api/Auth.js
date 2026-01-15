@@ -61,7 +61,7 @@ export async function loginUser(credentials) {
   try {
     const response = await axiosInstance.post('/accounts/auth/login/', credentials);
     const { access, refresh, user, roles, permissions } = response.data;
-
+    //console.log(roles, permissions);
     // Guarda tokens en cookies
     setAuthCookies(access, refresh);
     return {
