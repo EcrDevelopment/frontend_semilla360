@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { useAuth } from './AuthContext.js';
 import { getTokenFromCookie } from '../axiosConfig.js';
 
-// 3. La URL absoluta del backend
-const WS_URL = 'ws://10.168.0.5:8000/ws/notifications/';
+// BORRAMOS LA URL FIJA. La calcularemos dinámicamente abajo.
+// const WS_URL = 'ws://10.168.0.5:8000/ws/notifications/'; 
 
 const WebSocketContext = createContext({
   isConnected: false,
@@ -26,7 +26,7 @@ export const WebSocketProvider = ({ children }) => {
       return;
     }
 
-    // 1. Recuperación de Token (Cookie -> LocalStorage)
+    // 1. Recuperación de Token
     let token = getTokenFromCookie('access_token');
     if (!token) token = localStorage.getItem('access_token');
 
@@ -35,28 +35,42 @@ export const WebSocketProvider = ({ children }) => {
       return;
     }
 
-    const fullWsUrl = `${WS_URL}?token=${token}`;
-    console.log(`[WebSocket] Intentando conectar...`); 
+    // --- LÓGICA DINÁMICA DE URL (AQUÍ ESTÁ LA SOLUCIÓN) ---
+    
+    // 1. Detectar protocolo: Si es HTTPS, usar WSS. Si es HTTP, usar WS.
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    
+    // 2. Detectar Host: Usamos el dominio actual (ej: beta.semilla360.online)
+    let host = window.location.host; 
+
+    // OJO: Si estás en desarrollo (localhost), el frontend suele estar en puerto 3000
+    // pero el backend en el 8000. Hacemos un ajuste manual solo para local.
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+        // Ajusta esto a tu IP de desarrollo si es necesario
+        host = '10.168.0.5:8000'; 
+        // O si usas localhost:
+        //host = 'localhost:8000';
+    }
+
+    // Construimos la URL final
+    // En producción quedará: wss://beta.semilla360.online/ws/notifications/?token=...
+    const fullWsUrl = `${protocol}//${host}/ws/notifications/?token=${token}`;
+    
+    console.log(`Intentando conectar`); 
+    // -------------------------------------------------------
     
     const socket = new WebSocket(fullWsUrl);
     socketRef.current = socket;
 
-    // --- EVENT HANDLERS (¡ESTO ES LO QUE FALTABA!) ---
-
     socket.onopen = () => {
-      console.log('✅ [WebSocket] Conectado exitosamente.');
+      console.log('✅ Conectado exitosamente.');
       setIsConnected(true);
     };
 
-    // ¡ESTA ES LA PIEZA CLAVE QUE FALTABA!
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
-        // Este log confirmará que React ya tiene el dato en la mano
-        //console.log('🔥 [Context] MENSAJE RECIBIDO:', data); 
-        
-        setLastMessage(data); // <--- Esto dispara la actualización en tu componente
+        setLastMessage(data); 
       } catch (e) {
         console.error('❌ [WebSocket] Error al parsear JSON:', e);
       }
@@ -79,17 +93,13 @@ export const WebSocketProvider = ({ children }) => {
 
   }, [isAuthenticated]);
 
-  // Efecto para conectar al iniciar o al loguearse
   useEffect(() => {
     if (isAuthenticated) {
       connect();
     }
-    
-    // Limpieza al desmontar
     return () => {
       if (socketRef.current) {
-        // Solo cerramos si el componente se desmonta realmente (ej: cerrar app)
-        // socketRef.current.close(1000, 'Unmount');
+        // socketRef.current.close(); // Opcional según tu lógica
       }
     };
   }, [isAuthenticated, connect]);

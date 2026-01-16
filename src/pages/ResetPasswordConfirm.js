@@ -118,7 +118,7 @@ const ResetPasswordConfirm = () => {
     <section style={styles.section}>
       <div style={styles.container}>
         <div style={styles.header}>
-          <Avatar src={"/Logo_Semilla_Icono.png"} size={60} shape="square" />
+          <Avatar src={"/logo_icono.png"} size={60} shape="square" />
           <Title style={styles.title}>Restablecer contraseña</Title>
           <Text style={styles.text}>
             Ingresa tu nueva contraseña para tu cuenta.

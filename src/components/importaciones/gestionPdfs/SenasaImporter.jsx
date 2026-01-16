@@ -270,6 +270,7 @@ const SenasaImporterModal = ({ open, onClose, numeroDua, anioDua, onImportSucces
 
                 </div>
             }
+            forceRender={true}
             open={open}
             onCancel={onClose}
             footer={null}

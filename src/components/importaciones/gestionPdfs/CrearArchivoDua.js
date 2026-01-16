@@ -91,8 +91,8 @@ const CrearArchivoDua = () => {
   useEffect(() => {
     const fetchTipos = async () => {
       try {
-        const response = await getTipoDocumentos();
-        setTiposDocumento(response.data);
+        const response = await getTipoDocumentos({all:true});
+        setTiposDocumento(response.data.results||[]);
       } catch (error) {
         console.error("Error al obtener tipos de documento:", error);
         message.error("No se pudieron cargar los tipos de documento");
@@ -102,23 +102,30 @@ const CrearArchivoDua = () => {
   }, []);
 
   // Función extraída para poder recargar documentos tras importar de SENASA si fuera necesario
-  const fetchDocumentos = async () => {
+ const fetchDocumentos = useCallback(async () => {
     try {
       const data = await getDocumentosPorDeclaracion(numero, anio);
       setDocumentos(data);
 
-      if (data.length > 0 && !selectedDocId) {
-        setSelectedDocId(data[0].id);
-      }
+      // TRUCO: Usamos la forma funcional del setter (prev => ...)
+      // Esto nos permite verificar si ya hay un seleccionado sin agregar 
+      // 'selectedDocId' a las dependencias de este useCallback.
+      setSelectedDocId(prevSelected => {
+        if (data.length > 0 && !prevSelected) {
+          return data[0].id;
+        }
+        return prevSelected;
+      });
+      
     } catch (error) {
       console.error('Error al obtener documentos:', error);
       message.error("Error al obtener documentos");
     }
-  };
+  }, [numero, anio]); // <--- Ahora esta función es estable
 
   useEffect(() => {
     fetchDocumentos();
-  }, [numero, anio]);
+  }, [fetchDocumentos]);
 
   useEffect(() => {
     if (!selectedDocId) {
@@ -277,7 +284,7 @@ const CrearArchivoDua = () => {
             file={selectedDocBlobUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={(err) => {
-              console.error("Error al cargar PDF:", err);
+              console.error("Error al cargar PDF");
               message.error("Este archivo no es un PDF válido o está dañado.");
               setSelectedDocBlobUrl(null);
             }}

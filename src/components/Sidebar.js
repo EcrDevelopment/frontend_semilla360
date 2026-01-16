@@ -94,7 +94,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     return (
       <>
         <Header style={{ background: "#001529", padding: "0 16px", display: "flex", alignItems: "center" }}>
-          <Image src="/Logo_Semilla_Icono.png" alt="Logo" preview={false} height={40} />
+          <Image src="/logo_icono.png" alt="Logo" preview={false} height={40} />
           <Button
             type="text"
             icon={<MenuOutlined style={{ color: "white", fontSize: 20 }} />}
@@ -103,7 +103,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
           />
         </Header>
         <Drawer
-          title={<Image src="/Logo_Semilla_Icono.png" alt="Logo Semilla" preview={false} height={40} />}
+          title={<Image src="/logo_icono.png" alt="Logo Semilla" preview={false} height={40} />}
           placement="left"
           closeIcon={<CloseOutlined style={{ color: "white", fontSize: 20 }} />}
           onClose={() => setDrawerOpen(false)}
@@ -155,7 +155,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         >
             <img
               // Usamos la imagen que creaste de 220px
-              src="/Logo_Semilla_Completo_Alineado.png"
+              src="/logo_completo.png"
               alt="Semilla 360"
               style={{
                 height: "64px",

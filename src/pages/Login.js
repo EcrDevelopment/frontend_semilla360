@@ -88,7 +88,7 @@ const Login = () => {
         <section style={styles.section}>
             <div style={styles.container}>
                 <div style={styles.header}>
-                    <Avatar src={"/Logo_Semilla_Icono.png"} size={60} shape="square" />
+                    <Avatar src={"/logo_icono.png"} size={60} shape="square" />
                     <Title style={styles.title}>Iniciar Sesión</Title>
                     <Text style={styles.text}>
                         Bienvenido, por favor ingresa tus datos de inicio de sesión.

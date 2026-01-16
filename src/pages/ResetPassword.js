@@ -71,7 +71,7 @@ const ResetPasswordRequest = () => {
     <section style={styles.section}>
       <div style={styles.container}>
         <div style={styles.header}>
-          <Avatar src={"/Logo_Semilla_Icono.png"} size={60} shape="square" />
+          <Avatar src={"/logo_icono.png"} size={60} shape="square" />
           <Title style={styles.title}>Recuperar contraseña</Title>
           <Text style={styles.text}>
             Ingresa tu correo y te enviaremos un enlace para restablecer tu

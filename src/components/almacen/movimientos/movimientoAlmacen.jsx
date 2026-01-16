@@ -65,11 +65,49 @@ export default function MovimientoAlmacenList() {
   const currentStreamRef = useRef(null);
   const [progressPercent, setProgressPercent] = useState(0);
 
+  const lastUpdateRef = useRef(Date.now());
+
 
   // -----------------------------------------------------------------------
   // 1. CARGA DE MAESTROS
   // -----------------------------------------------------------------------
   useEffect(() => {
+
+    // A. Recuperación INMEDIATA visual (para que el usuario vea que carga al dar F5)
+    const wasSyncing = localStorage.getItem('is_syncing_movimientos') === 'true'; // <--- CAMBIO
+    if (wasSyncing) {
+        setIsSyncing(true);
+        setSyncStatusText('Recuperando sincronización...');
+    }
+
+    // B. Verificación REAL con el Backend
+    const fetchInitialStatus = async () => {
+      try {
+        const res = await checkSyncStatus();
+        if (res.data.is_syncing) {
+          setIsSyncing(true);
+          localStorage.setItem('is_syncing_movimientos', 'true'); // <--- CAMBIO
+          if (res.data.message) setSyncStatusText(res.data.message);
+          if (res.data.percent !== undefined) setProgressPercent(res.data.percent);
+          // Actualizamos el reloj del watchdog
+          lastUpdateRef.current = Date.now(); 
+        } else {
+          // Si el backend dice que NO está sincronizando, corregimos al frontend
+          setIsSyncing(false);
+          localStorage.removeItem('is_syncing_movimientos'); // <--- CAMBIO
+          setProgressPercent(0);
+        }
+      } catch (error) { 
+        console.error("Error status:", error); 
+        // Si falla la verificación y llevábamos mucho tiempo, apagamos
+        if (wasSyncing) {
+            message.warning("No se pudo verificar el estado de la sincronización.");
+            setIsSyncing(false);
+            localStorage.removeItem('is_syncing_movimientos');
+        }
+      }
+    };
+
     const fetchEmpresas = async () => {
       setLoadingEmpresas(true);
       try {
@@ -82,6 +120,8 @@ export default function MovimientoAlmacenList() {
       }
     };
     fetchEmpresas();
+
+    fetchInitialStatus();
   }, []);
 
   useEffect(() => {
@@ -272,6 +312,7 @@ export default function MovimientoAlmacenList() {
   // -----------------------------------------------------------------------
   const handleSocketMessage = useCallback((data) => {
     const { status, message: msg, result } = data;
+    lastUpdateRef.current = Date.now();
     if (msg) setSyncStatusText(msg);
     if (status === 'progress') {
       setIsSyncing(true);
@@ -305,6 +346,7 @@ export default function MovimientoAlmacenList() {
   }, [isConnected, selectedEmpresaId, sendMessage]);
 
   useEffect(() => {
+    
     const fetchInitialStatus = async () => {
       try {
         const res = await checkSyncStatus();
@@ -317,6 +359,7 @@ export default function MovimientoAlmacenList() {
     };
     fetchInitialStatus();
   }, []);
+  
 
   useEffect(() => {
     if (!lastMessage) return;
