@@ -85,29 +85,56 @@ const RegistroEstibaje = ({ registroEdit, onCancel, onSuccess }) => {
     loadMaestros();
   }, [registroEdit, form, isEditMode]); // Dependencias clave
 
-  // --- LÓGICA DE BÚSQUEDA INTELIGENTE (Sin cambios mayores) ---
+  
+  // --- LÓGICA DE BÚSQUEDA INTELIGENTE (CORREGIDA) ---
   const handleBuscarGuia = async () => {
+    // 1. Obtenemos los valores del formulario (Aquí 'empresa' es el ID, ej: 15)
     const docInput = form.getFieldValue('nro_documento');
     const empresaId = form.getFieldValue('empresa');
-    setMotivoTraslado(null); 
 
+    // Limpiamos estados previos
+    setMotivoTraslado(null);
+
+    // Validaciones básicas
     if (!docInput || !empresaId) return message.warning("Faltan datos de búsqueda");
 
-    let serie = "", numero = docInput;
+    // 2. --- EL TRUCO: Buscar el nombre usando el ID seleccionado ---
+    // Buscamos en el array de empresas la que coincida con el ID
+    const empresaObj = empresas.find(e => e.id === empresaId);
+
+    if (!empresaObj) {
+      return message.error("No se pudo identificar la empresa seleccionada.");
+    }
+
+    // Extraemos el nombre que necesita la API de consulta (ej: "MAXIMILIAN_SAC")
+    const nombreEmpresaParaApi = empresaObj.nombre_empresa; 
+    // ----------------------------------------------------------------
+
+    // 3. Preparamos Serie y Número
+    let serie = "";
+    let numero = docInput;
     if (docInput.includes("-")) {
-      [serie, numero] = docInput.split("-");
+      const partes = docInput.split("-");
+      serie = partes[0];
+      numero = partes[1];
     }
 
     setLoadingGuia(true);
     try {
-      const response = await consultarGuia({ empresa: empresaId, grenumser: serie, grenumdoc: numero });
+      // 4. Llamamos a la API usando el NOMBRE, no el ID
+      const response = await consultarGuia({ 
+          empresa: nombreEmpresaParaApi, // <--- Aquí va el nombre
+          grenumser: serie, 
+          grenumdoc: numero 
+      });
+      
       const data = response.data;
 
       if (data && data.cabecera) {
         message.success("Datos cargados del ERP");
         setMotivoTraslado(data.cabecera.motivo_traslado);
 
-        // Lógica placa
+        // Lógica para extraer placa del texto
         let placa = "";
         const itemTexto = data.detalles.find(d => d.itemcodigo === "TEXTO");
         if (itemTexto?.itemdescripcion) {
@@ -116,29 +143,32 @@ const RegistroEstibaje = ({ registroEdit, onCancel, onSuccess }) => {
         }
 
         const prodItem = data.detalles.find(d => d.itemcodigo !== 'TEXTO');
+        const productoStr = prodItem ? prodItem.itemdescripcion : '';
+
         const pesoTotal = parseFloat(data.cabecera.pesobrutototal || 0);
         const sacosEstimados = pesoTotal > 0 ? Math.round(pesoTotal / 50) : 0;
 
-        // Mergeamos con lo que ya tiene el form (para no borrar empresa/almacen)
+        // 5. Llenamos el formulario (Mantenemos empresa/almacen como estaban)
         form.setFieldsValue({
           nro_documento: `${data.cabecera.serie}-${data.cabecera.numero}`,
           proveedor_cliente: data.cabecera.receptorrazsocial || data.cabecera.emisorrazsocial,
           transportista_nombre: data.cabecera.transportistarazsocial,
           transportista_ruc: data.cabecera.ruc_transportista,
           placa_vehiculo: placa || data.cabecera.ruc_transportista,
-          producto_nombre: prodItem ? prodItem.itemdescripcion : '',
+          producto_nombre: productoStr,
           observaciones: `Motivo: ${data.cabecera.motivo_traslado}`,
-          // Si estamos editando y buscamos guía, quizás queramos mantener los detalles viejos o reemplazarlos.
-          // Aquí asumimos reemplazo para facilitar la operación.
-          detalles: [{ cantidad_sacos: sacosEstimados, precio_unitario: 0 }] 
+          detalles: [{ cantidad_sacos: sacosEstimados, precio_unitario: 0 }]
         });
+        
+        // Recalculamos totales visuales
         handleValuesChange(null, form.getFieldsValue());
+
       } else {
         message.info("No encontrado, ingrese manual.");
       }
     } catch (error) {
       console.log(error);
-      message.warning("Error consultando ERP o Guía no existe");
+      message.warning("Error consultando ERP");
     } finally {
       setLoadingGuia(false);
     }
