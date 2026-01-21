@@ -88,7 +88,7 @@ const AppRoutes = ({ resetContent }) => (
     {/* Listado de Fletes (Ver) */}
     <Route path="/importaciones/ver_fletes_internacionales" element={
       <AuthGuard>
-        <ProtectedRoute requiredPermission="importaciones.can_view_importaciones">
+        <ProtectedRoute requiredPermission="importaciones.can_view_flete">
           <ListadoFletes resetContent={resetContent}/>
         </ProtectedRoute>      
       </AuthGuard>
@@ -97,7 +97,7 @@ const AppRoutes = ({ resetContent }) => (
     {/* Registrar Flete (Crear) - ACTUALIZADO A NUEVO PERMISO */}
     <Route path="/importaciones/registrar_flete_internacional" element={
       <AuthGuard>
-        <ProtectedRoute requiredPermission="importaciones.can_create_importaciones">
+        <ProtectedRoute requiredPermission="importaciones.can_create_flete">
           <CalculoFlete resetContent={resetContent}/>
         </ProtectedRoute>      
       </AuthGuard>
@@ -106,7 +106,7 @@ const AppRoutes = ({ resetContent }) => (
     {/* Editar Flete (Editar) - ACTUALIZADO A NUEVO PERMISO */}
     <Route path="importaciones/editar-flete/:id" element={
       <AuthGuard>
-        <ProtectedRoute requiredPermission="importaciones.can_edit_importaciones">
+        <ProtectedRoute requiredPermission="importaciones.can_edit_flete">
             <EditarFlete resetContent={resetContent} />
         </ProtectedRoute>
       </AuthGuard>
@@ -124,7 +124,7 @@ const AppRoutes = ({ resetContent }) => (
     {/* Gestión Documentos (Staff Importaciones) */}
     <Route path="/importaciones/gestion_documentos" element={
         <AuthGuard>
-            <ProtectedRoute requiredPermission="importaciones.can_manage_documents">
+            <ProtectedRoute requiredPermission="importaciones.can_view_documentos_proveedor">
                 <AdminDocumentos/>
             </ProtectedRoute>
         </AuthGuard>
@@ -133,12 +133,19 @@ const AppRoutes = ({ resetContent }) => (
     {/* Archivos DUA */}
     <Route path="importaciones/listado-archivos-dua/" element={
         <AuthGuard>
-            <ProtectedRoute requiredPermission="importaciones.can_manage_documents">
+            <ProtectedRoute requiredPermission="importaciones.can_view_expediente_dua">
                 <ListarArchivos/>
             </ProtectedRoute>
         </AuthGuard>
     } />
-    <Route path="/importaciones/crear-archivo-dua/:id/:numero/:anio" element={<AuthGuard><CrearArchivoDua/></AuthGuard>} />
+    <Route path="/importaciones/crear-archivo-dua/:id/:numero/:anio" element={
+        <AuthGuard>
+            <ProtectedRoute requiredPermission="importaciones.can_create_expediente_dua">
+                <CrearArchivoDua/>
+            </ProtectedRoute>
+        </AuthGuard>
+        
+    } />
     <Route path="importaciones/archivos-dua/:id/:numero/:anio" element={<AuthGuard><VistaArchivoDua/></AuthGuard>} />
     
     {/* Consultas Públicas (dentro del sistema) */}
