@@ -157,7 +157,7 @@ const AppRoutes = ({ resetContent }) => (
        ------------------------------------------------------------------- */}
     <Route path="/proveedores/carga_docs_dua" element={
         <AuthGuard>
-            <ProtectedRoute requiredPermission="usuarios.can_upload_documents">
+            <ProtectedRoute requiredPermission="portal_proveedores.can_upload_documents">
                 <CargaDocumentos />
             </ProtectedRoute>
         </AuthGuard>
@@ -165,7 +165,7 @@ const AppRoutes = ({ resetContent }) => (
     
     <Route path="/proveedores/gestion_de_documentos" element={
         <AuthGuard>
-            <ProtectedRoute requiredPermission="usuarios.can_manage_own_documents">
+            <ProtectedRoute requiredPermission="portal_proveedores.can_manage_own_documents">
                 <GestDocumentos/>
             </ProtectedRoute>
         </AuthGuard>
